@@ -64,10 +64,6 @@ static lv_obj_t *page_indicator = nullptr;
 // static lv_obj_t *storage_arc = nullptr;
 // static lv_obj_t *network_bar = nullptr;
 
-// Animation timers (unused but kept for compatibility)
-static lv_timer_t *anim_timer = nullptr;
-static float anim_value = 0.0f;
-
 // Function declarations
 void drawHeader(const char* title);
 void updatePageIndicator();
@@ -317,7 +313,7 @@ void handleSerial() {
         JsonDocument doc;
         DeserializationError err = deserializeJson(doc, line);
         if(!err) {
-            if (doc.containsKey("alarms")) {
+            if (!doc["alarms"].isNull()) {
                 alarms.clear();
                 JsonArray alarmsArray = doc["alarms"];
                 for (JsonObject alarmObj : alarmsArray) {
@@ -364,7 +360,7 @@ void handleSerial() {
                         lv_obj_set_style_text_opa(ui_No_alarm, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
                     }
                 }
-            } else if (doc.containsKey("screen")) {
+            } else if (!doc["screen"].isNull()) {
                 String screen = doc["screen"];
                 if (screen == "Clock") {
                     _ui_screen_change(&ui_Clock, LV_SCR_LOAD_ANIM_FADE_ON, 0, 0, &ui_Clock_screen_init);
@@ -385,7 +381,7 @@ void handleSerial() {
                 lastMetricsMs = millis();
                 
                 // Update CPU gauge if Call screen is active and CPU data is available
-                if (ui_Call && lv_scr_act() == ui_Call && doc.containsKey("cpu")) {
+                if (ui_Call && lv_scr_act() == ui_Call && !doc["cpu"].isNull()) {
                     ui_update_cpu_gauge();
                 }
             }

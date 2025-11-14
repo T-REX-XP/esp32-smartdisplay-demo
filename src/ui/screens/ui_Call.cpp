@@ -31,7 +31,7 @@ lv_obj_t * ui_Scrolldots1 = NULL;
 // Function to update CPU gauge with current metrics
 void ui_update_cpu_gauge() {
     // Safety checks
-    if (!ui_CPU_Gauge || !ui_CPU_Label || !metrics.containsKey("cpu")) {
+    if (!ui_CPU_Gauge || !ui_CPU_Label || metrics["cpu"].isNull()) {
         return;
     }
     
@@ -71,7 +71,7 @@ void ui_event_Call(lv_event_t * e)
         Serial.println(init_out);
 
         // Update CPU gauge with current metrics if available
-        if (metrics.containsKey("cpu")) {
+        if (!metrics["cpu"].isNull()) {
             const char* cpu_cstr = metrics["cpu"];
             if (cpu_cstr) {
                 int cpu_value = atoi(cpu_cstr);
