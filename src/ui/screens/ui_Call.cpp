@@ -58,8 +58,8 @@ void ui_event_Call(lv_event_t * e)
     lv_event_code_t event_code = lv_event_get_code(e);
 
     if(event_code == LV_EVENT_SCREEN_LOADED) {
-        // Start periodic CPU requests every 5 seconds
-        cpu_request_timer = lv_timer_create(cpu_request_timer_cb, 5000, NULL);
+        // Start periodic CPU requests every 1.5 seconds
+        cpu_request_timer = lv_timer_create(cpu_request_timer_cb, 1500, NULL);
         
         // Request CPU metrics immediately when CPU screen opens
         static JsonDocument init_request;

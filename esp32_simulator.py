@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-ESP32 Smart Display Simulator Server
+ESP32 Smart Display Simulator Service
 ====================================
 
-This script simulates a server that communicates with the ESP32 smart display
+This script runs as a Linux service that communicates with the ESP32 smart display
 via UART serial connection. It provides:
 
 1. Alarm list management - responds to alarm requests
-2. CPU metrics simulation - provides dynamic CPU usage data
+2. Real CPU metrics - provides actual system CPU usage data
 3. Screen navigation handling
 
 Protocol:
@@ -18,20 +18,19 @@ Usage:
     python esp32_simulator.py [COM_PORT] [BAUD_RATE]
 
 Example:
-    python esp32_simulator.py COM3 115200
+    python esp32_simulator.py /dev/ttyUSB0 115200
 """
 
 import serial
 import json
 import time
-import random
 import sys
-import threading
+import psutil
 import argparse
 from datetime import datetime
 
 class ESP32Simulator:
-    def __init__(self, port='COM3', baudrate=115200):
+    def __init__(self, port='/dev/ttyUSB0', baudrate=115200):
         self.port = port
         self.baudrate = baudrate
         self.serial_conn = None
@@ -45,9 +44,8 @@ class ESP32Simulator:
             {"time": "22:00", "label": "Bedtime", "enabled": True}
         ]
 
-        # CPU simulation parameters
-        self.cpu_base = 15  # Base CPU usage
-        self.cpu_variation = 10  # Random variation
+        # CPU monitoring parameters
+        self.cpu_update_interval = 1.5  # Update every 1.5 seconds
 
     def connect(self):
         """Establish serial connection to ESP32"""
@@ -92,15 +90,41 @@ class ESP32Simulator:
         print("📋 Sending alarm list...")
         self.send_json({"alarms": self.alarms})
 
+    def get_real_cpu_usage(self):
+        """Get real CPU usage percentage from system"""
+        try:
+            # Get CPU usage over 1 second interval
+            cpu_percent = psutil.cpu_percent(interval=1)
+            return int(cpu_percent)
+        except Exception as e:
+            print(f"Error getting CPU usage: {e}")
+            return 0
+
     def handle_cpu_request(self):
         """Send current CPU metrics to ESP32"""
-        cpu_usage = self.generate_cpu_usage()
-        metrics = {
-            "cpu": str(cpu_usage),
-            "temp_c": f"{random.uniform(35.0, 45.0):.1f}",
-            "fs_free": f"{random.uniform(0.5, 2.0):.1f}",
-            "fs_used": f"{random.uniform(2.0, 3.5):.1f}"
-        }
+        cpu_usage = self.get_real_cpu_usage()
+
+        # Get additional system metrics
+        try:
+            memory = psutil.virtual_memory()
+            disk = psutil.disk_usage('/')
+
+            metrics = {
+                "cpu": str(cpu_usage),
+                "temp_c": f"{psutil.sensors_temperatures().get('coretemp', [{}])[0].get('current', 45.0):.1f}",
+                "fs_free": f"{disk.free / (1024*1024):.1f}",  # MB
+                "fs_used": f"{disk.used / (1024*1024):.1f}"   # MB
+            }
+        except Exception as e:
+            print(f"Error getting system metrics: {e}")
+            # Fallback to basic metrics
+            metrics = {
+                "cpu": str(cpu_usage),
+                "temp_c": "45.0",
+                "fs_free": "1024.0",
+                "fs_used": "2048.0"
+            }
+
         self.send_json(metrics)
 
     def generate_cpu_usage(self):

@@ -99,9 +99,62 @@ The menu system can receive metrics via Serial communication:
 - `fs_free`: Free filesystem space in MB (string)
 - `fs_used`: Used filesystem space in MB (string)
 
-## UART Commands
+## Linux Service Installation
 
-The device supports various commands via UART (115200 baud) for remote control and data updates. All commands are JSON-formatted and must end with a newline.
+The ESP32 simulator can be installed as a Linux systemd service for automatic startup and real CPU monitoring.
+
+### Quick Install
+
+```bash
+# Make installer executable
+chmod +x install.sh
+
+# Run installer (will prompt for serial port)
+./install.sh
+```
+
+### What the installer does:
+
+1. **Installs dependencies**: Python 3, pip, pyserial, psutil
+2. **Creates service user**: `esp32sim` with minimal privileges
+3. **Installs files**: Copies simulator to `/opt/esp32-simulator/`
+4. **Configures systemd**: Creates and enables the service
+5. **Sets permissions**: Adds user to `dialout` group for serial access
+
+### Service Management
+
+```bash
+# Check status
+sudo systemctl status esp32-simulator
+
+# View logs
+sudo journalctl -u esp32-simulator -f
+
+# Restart service
+sudo systemctl restart esp32-simulator
+
+# Stop service
+sudo systemctl stop esp32-simulator
+```
+
+### Real CPU Monitoring
+
+The service provides **real system CPU usage** data:
+
+- **Updates every 1.5 seconds** when Call screen is active
+- **System metrics**: CPU %, temperature, disk usage
+- **Automatic startup** with the Linux system
+- **Background operation** with proper logging
+
+### Configuration
+
+To change the serial port, edit the service file:
+
+```bash
+sudo systemctl edit esp32-simulator
+```
+
+Add or modify the `ExecStart` line with your serial port (e.g., `/dev/ttyACM0`).
 
 ### Screen Navigation
 
@@ -164,8 +217,8 @@ The Call screen now displays a real-time CPU usage gauge that updates automatica
 - Continuous monitoring when screen is active
 
 **Automatic Behavior:**
-- When Call screen opens: MCU starts sending `{"request": "cpu"}` every 5 seconds
-- Server responds with CPU metrics for each request
+- When Call screen opens: MCU starts sending `{"request": "cpu"}` every 1.5 seconds
+- Server responds with real system CPU metrics for each request
 - When leaving Call screen: CPU monitoring stops
 
 **Example CPU Update:**

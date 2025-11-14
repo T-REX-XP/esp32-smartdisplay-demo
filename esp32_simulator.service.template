@@ -1,0 +1,26 @@
+[Unit]
+Description=ESP32 Smart Display Simulator
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=esp32sim
+Group=esp32sim
+WorkingDirectory=/opt/esp32-simulator
+ExecStart=/usr/bin/python3 /opt/esp32-simulator/esp32_simulator.py /dev/ttyUSB0
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=esp32-simulator
+
+# Security settings
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/opt/esp32-simulator
+ProtectHome=yes
+
+[Install]
+WantedBy=multi-user.target
