@@ -8,17 +8,18 @@ via UART serial connection. It provides:
 
 1. Alarm list management - responds to alarm requests
 2. Real CPU metrics - provides actual system CPU usage data
-3. Screen navigation handling
+3. Storage drive information - provides drive capacity and free space data
+4. Screen navigation handling
 
 Protocol:
 - MCU sends JSON commands via serial
-- Server responds with appropriate JSON data
+- Server responds with MessagePack (default) or JSON data for optimal embedded performance
 
 Usage:
-    python esp32_simulator.py [COM_PORT] [BAUD_RATE]
+    python esp32_simulator.py [COM_PORT] [BAUD_RATE] [--format json|msgpack]
 
 Example:
-    python esp32_simulator.py /dev/ttyUSB0 115200
+    python esp32_simulator.py /dev/ttyUSB0 115200 --format msgpack
 """
 
 import serial
@@ -27,12 +28,15 @@ import time
 import sys
 import psutil
 import argparse
-from datetime import datetime
+import random
+import platform
+import msgpack
 
 class ESP32Simulator:
-    def __init__(self, port='/dev/ttyUSB0', baudrate=115200):
+    def __init__(self, port='/dev/ttyUSB0', baudrate=115200, format='msgpack'):
         self.port = port
         self.baudrate = baudrate
+        self.format = format  # 'json' or 'msgpack'
         self.serial_conn = None
         self.running = False
 
@@ -81,14 +85,21 @@ class ESP32Simulator:
             json_str = json.dumps(data, separators=(',', ':'))
             self.serial_conn.write((json_str + '\n').encode('utf-8'))
             self.serial_conn.flush()
-            print(f"📤 Sent: {json_str}")
+            print(f"📤 Sent JSON: {json_str}")
         except Exception as e:
-            print(f"❌ Error sending data: {e}")
+            print(f"❌ Error sending JSON data: {e}")
+
+    def send_data(self, data):
+        """Send data using configured format (JSON or MessagePack)"""
+        if self.format == 'msgpack':
+            self.send_msgpack(data)
+        else:
+            self.send_json(data)
 
     def handle_alarm_request(self):
         """Send current alarm list to ESP32"""
         print("📋 Sending alarm list...")
-        self.send_json({"alarms": self.alarms})
+        self.send_data({"alarms": self.alarms})
 
     def get_real_cpu_usage(self):
         """Get real CPU usage percentage from system"""
@@ -125,7 +136,56 @@ class ESP32Simulator:
                 "fs_used": "2048.0"
             }
 
-        self.send_json(metrics)
+        self.send_data(metrics)
+
+    def get_storage_info(self):
+        """Get storage drive information and capacity/free space"""
+        try:
+            storage_info = []
+            
+            # Get all disk partitions
+            partitions = psutil.disk_partitions(all=False)
+            
+            for partition in partitions:
+                try:
+                    # Get usage statistics for each partition
+                    usage = psutil.disk_usage(partition.mountpoint)
+                    
+                    # Convert bytes to GB for readability
+                    total_gb = usage.total / (1024**3)
+                    used_gb = usage.used / (1024**3)
+                    free_gb = usage.free / (1024**3)
+                    
+                    # Get drive info
+                    drive_info = {
+                        "device": partition.device,
+                        "mountpoint": partition.mountpoint,
+                        "fstype": partition.fstype,
+                        "opts": partition.opts,
+                        "total_gb": f"{total_gb:.2f}",
+                        "used_gb": f"{used_gb:.2f}",
+                        "free_gb": f"{free_gb:.2f}",
+                        "used_percent": f"{usage.percent:.1f}"
+                    }
+                    
+                    storage_info.append(drive_info)
+                    
+                except (OSError, PermissionError) as e:
+                    # Skip partitions we can't access
+                    print(f"Warning: Could not access {partition.mountpoint}: {e}")
+                    continue
+            
+            return storage_info
+            
+        except Exception as e:
+            print(f"Error getting storage info: {e}")
+            return []
+
+    def handle_storage_request(self):
+        """Send storage drive information to ESP32"""
+        print("💾 Sending storage information...")
+        storage_info = self.get_storage_info()
+        self.send_data({"storage": storage_info})
 
     def generate_cpu_usage(self):
         """Generate realistic CPU usage with some variation"""
@@ -162,6 +222,8 @@ class ESP32Simulator:
                     self.handle_alarm_request()
                 elif request_type == "cpu":
                     self.handle_cpu_request()
+                elif request_type == "storage":
+                    self.handle_storage_request()
 
             elif "alarms" in command:
                 # ESP32 is sending alarm updates (not requesting)
@@ -178,9 +240,10 @@ class ESP32Simulator:
     def listen_loop(self):
         """Main listening loop for incoming serial data"""
         print("👂 Listening for ESP32 commands...")
+        print(f"📊 Using {self.format.upper()} format for responses")
         print("Commands expected:")
         print("  - Screen changes: {'screen': 'Alarm'} or {'screen': 'Call'}")
-        print("  - Direct requests: {'request': 'alarms'} or {'request': 'cpu'}")
+        print("  - Direct requests: {'request': 'alarms'}, {'request': 'cpu'}, {'request': 'storage'}")
         print("")
 
         buffer = ""
@@ -235,10 +298,12 @@ def main():
     parser = argparse.ArgumentParser(description="ESP32 Smart Display Simulator Server")
     parser.add_argument('port', nargs='?', default='COM3', help='Serial port (default: COM3)')
     parser.add_argument('baudrate', nargs='?', type=int, default=115200, help='Baud rate (default: 115200)')
+    parser.add_argument('--format', choices=['json', 'msgpack'], default='msgpack', 
+                       help='Data format (default: msgpack)')
 
     args = parser.parse_args()
 
-    simulator = ESP32Simulator(args.port, args.baudrate)
+    simulator = ESP32Simulator(args.port, args.baudrate, args.format)
     simulator.run()
 
 if __name__ == "__main__":
