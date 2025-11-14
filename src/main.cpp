@@ -6,7 +6,6 @@
 
 #include <esp32_smartdisplay.h>
 #include <ui/ui.h>
-#include <ui/screens.h>
 
 // Define button pins for navigation (using available GPIOs)
 // Note: GPIO34 and GPIO35 are input-only and don't have pull-ups
@@ -357,12 +356,8 @@ void setup()
     // lv_disp_set_rotation(disp, LV_DISP_ROT_180);
     // lv_disp_set_rotation(disp, LV_DISP_ROT_270);
 
-    // Create our menu screen instead of using the default UI
-    createMenuScreen();
-    
-    // Initialize with some demo metrics
-    requestMetrics();
-    render();
+    // Initialize the new UI
+    ui_init();
 }
 
 ulong next_millis;
@@ -379,7 +374,7 @@ void loop()
     static unsigned long lastReq = 0; 
     if(millis() - lastReq > 1000) { 
         lastReq = millis(); 
-        requestMetrics(); 
+        // requestMetrics(); 
     }
     
     // Handle button input with debouncing
@@ -398,13 +393,13 @@ void loop()
             if(menuIndex == 3) {
                 // On power menu, require long press
             } else {
-                navigateNextPage();
+                // navigateNextPage();
             }
         }
         // Detect long press (held for 2 seconds)
         else if(btnPressed && lastBtnState && (now - btnPressStart > 2000)) {
             if(menuIndex == 3) {
-                sendPoweroff();
+                // sendPoweroff();
             }
         }
         
@@ -415,7 +410,7 @@ void loop()
     static unsigned long lastRender = 0; 
     if(now - lastRender > 250) { 
         lastRender = now; 
-        render(); 
+        // render(); 
     }
 
 #ifdef BOARD_HAS_RGB_LED
