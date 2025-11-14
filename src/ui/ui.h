@@ -22,7 +22,7 @@ extern "C" {
 
 #include "screens/ui_Splash.h"
 #include "screens/ui_Clock.h"
-// #include "screens/ui_Call.h"
+#include "screens/ui_Call.h"
 #include "screens/ui_Chat.h"
 #include "screens/ui_Music_Player.h"
 #include "screens/ui_Weather.h"

@@ -117,11 +117,26 @@ Switch between UI screens remotely:
 - `"Alarm"`: Alarm management
 - `"Chat"`: Chat interface
 - `"Music"`: Music player
+- `"Call"`: CPU load gauge
 - `"Splash"`: Splash screen
 
 **Example:**
 ```json
 {"screen": "Weather"}
+```
+
+### CPU Load Gauge
+
+The Call screen now displays a real-time CPU usage gauge that updates automatically when metrics are received:
+
+- Visual analog meter with needle indicator (0-100%)
+- Percentage label below the gauge
+- Updates in real-time as `cpu` metric values are sent via UART
+- Smooth needle animation for better visual feedback
+
+**Example CPU Update:**
+```json
+{"cpu": "75"}
 ```
 
 ### Alarm Management
@@ -155,7 +170,7 @@ Send system metrics for display:
 
 **Supported Metrics:**
 - `temp_c`: External temperature in Celsius (string)
-- `cpu`: CPU usage percentage (string)
+- `cpu`: CPU usage percentage (string) - *Used for CPU gauge on Call screen*
 - `fs_free`: Free filesystem space in MB (string)
 - `fs_used`: Used filesystem space in MB (string)
 
