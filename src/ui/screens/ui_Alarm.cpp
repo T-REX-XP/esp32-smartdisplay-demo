@@ -4,6 +4,7 @@
 // Project name: Smart_Gadget
 
 #include "../ui.h"
+#include <ArduinoJson.h>
 #include <vector>
 #include <string>
 
@@ -30,6 +31,13 @@ void ui_event_Alarm(lv_event_t * e)
     lv_event_code_t event_code = lv_event_get_code(e);
 
     if(event_code == LV_EVENT_SCREEN_LOADED) {
+        // Request alarm list when Alarm screen opens
+        JsonDocument request;
+        request["request"] = "alarms";
+        String out;
+        serializeJson(request, out);
+        Serial.println(out);
+
         upanim_Animation(ui_Set_alarm, 100);
         // Removed animations for dynamic alarm components
         scrolldot_Animation(ui_Scrolldots5, 0);

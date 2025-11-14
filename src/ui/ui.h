@@ -67,6 +67,9 @@ LV_FONT_DECLARE(ui_font_Number);
 void ui_init(void);
 void ui_destroy(void);
 
+// CPU GAUGE UPDATE
+void ui_update_cpu_gauge(void);
+
 #ifdef __cplusplus
 } /*extern "C"*/
 #endif

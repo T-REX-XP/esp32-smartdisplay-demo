@@ -1,0 +1,221 @@
+#!/usr/bin/env python3
+"""
+ESP32 Smart Display Simulator Server
+====================================
+
+This script simulates a server that communicates with the ESP32 smart display
+via UART serial connection. It provides:
+
+1. Alarm list management - responds to alarm requests
+2. CPU metrics simulation - provides dynamic CPU usage data
+3. Screen navigation handling
+
+Protocol:
+- MCU sends JSON commands via serial
+- Server responds with appropriate JSON data
+
+Usage:
+    python esp32_simulator.py [COM_PORT] [BAUD_RATE]
+
+Example:
+    python esp32_simulator.py COM3 115200
+"""
+
+import serial
+import json
+import time
+import random
+import sys
+import threading
+import argparse
+from datetime import datetime
+
+class ESP32Simulator:
+    def __init__(self, port='COM3', baudrate=115200):
+        self.port = port
+        self.baudrate = baudrate
+        self.serial_conn = None
+        self.running = False
+
+        # Sample alarm data
+        self.alarms = [
+            {"time": "08:00", "label": "Morning Coffee", "enabled": True},
+            {"time": "12:30", "label": "Lunch Break", "enabled": True},
+            {"time": "18:00", "label": "Dinner Time", "enabled": False},
+            {"time": "22:00", "label": "Bedtime", "enabled": True}
+        ]
+
+        # CPU simulation parameters
+        self.cpu_base = 15  # Base CPU usage
+        self.cpu_variation = 10  # Random variation
+
+    def connect(self):
+        """Establish serial connection to ESP32"""
+        try:
+            self.serial_conn = serial.Serial(
+                port=self.port,
+                baudrate=self.baudrate,
+                timeout=1,
+                write_timeout=1
+            )
+            # Disable DTR and RTS to prevent ESP32 reset on connection
+            self.serial_conn.dtr = False
+            self.serial_conn.rts = False
+            
+            # Wait for connection to stabilize
+            time.sleep(3)
+            
+            print(f"✅ Connected to {self.port} at {self.baudrate} baud (DTR/RTS disabled)")
+            return True
+        except serial.SerialException as e:
+            print(f"❌ Failed to connect to {self.port}: {e}")
+            return False
+
+    def disconnect(self):
+        """Close serial connection"""
+        if self.serial_conn and self.serial_conn.is_open:
+            self.serial_conn.close()
+            print("🔌 Disconnected from serial port")
+
+    def send_json(self, data):
+        """Send JSON data to ESP32"""
+        try:
+            json_str = json.dumps(data, separators=(',', ':'))
+            self.serial_conn.write((json_str + '\n').encode('utf-8'))
+            self.serial_conn.flush()
+            print(f"📤 Sent: {json_str}")
+        except Exception as e:
+            print(f"❌ Error sending data: {e}")
+
+    def handle_alarm_request(self):
+        """Send current alarm list to ESP32"""
+        print("📋 Sending alarm list...")
+        self.send_json({"alarms": self.alarms})
+
+    def handle_cpu_request(self):
+        """Send current CPU metrics to ESP32"""
+        cpu_usage = self.generate_cpu_usage()
+        metrics = {
+            "cpu": str(cpu_usage),
+            "temp_c": f"{random.uniform(35.0, 45.0):.1f}",
+            "fs_free": f"{random.uniform(0.5, 2.0):.1f}",
+            "fs_used": f"{random.uniform(2.0, 3.5):.1f}"
+        }
+        self.send_json(metrics)
+
+    def generate_cpu_usage(self):
+        """Generate realistic CPU usage with some variation"""
+        variation = random.uniform(-self.cpu_variation, self.cpu_variation)
+        cpu = self.cpu_base + variation
+        # Keep within reasonable bounds
+        return max(5, min(95, int(cpu)))
+
+    def handle_screen_change(self, screen_name):
+        """Handle screen change notifications from ESP32"""
+        print(f"📱 Screen changed to: {screen_name}")
+
+        if screen_name == "Alarm":
+            # Send alarm list when Alarm screen opens
+            time.sleep(0.1)  # Small delay to ensure screen is ready
+            self.handle_alarm_request()
+
+        # Note: CPU monitoring is now handled by MCU sending periodic requests
+        # No continuous monitoring needed from server side
+
+    def process_command(self, command_str):
+        """Process incoming JSON command from ESP32"""
+        try:
+            command = json.loads(command_str.strip())
+            print(f"📥 Received: {command}")
+
+            # Handle different command types
+            if "screen" in command:
+                self.handle_screen_change(command["screen"])
+
+            elif "request" in command:
+                request_type = command["request"]
+                if request_type == "alarms":
+                    self.handle_alarm_request()
+                elif request_type == "cpu":
+                    self.handle_cpu_request()
+
+            elif "alarms" in command:
+                # ESP32 is sending alarm updates (not requesting)
+                print("📝 Alarm list updated by ESP32")
+
+            else:
+                print(f"⚠️  Unknown command: {command}")
+
+        except json.JSONDecodeError as e:
+            print(f"❌ Invalid JSON received: {command_str.strip()} - {e}")
+        except Exception as e:
+            print(f"❌ Error processing command: {e}")
+
+    def listen_loop(self):
+        """Main listening loop for incoming serial data"""
+        print("👂 Listening for ESP32 commands...")
+        print("Commands expected:")
+        print("  - Screen changes: {'screen': 'Alarm'} or {'screen': 'Call'}")
+        print("  - Direct requests: {'request': 'alarms'} or {'request': 'cpu'}")
+        print("")
+
+        buffer = ""
+        while self.running:
+            try:
+                if self.serial_conn and self.serial_conn.is_open:
+                    # Read available data
+                    if self.serial_conn.in_waiting > 0:
+                        data = self.serial_conn.read(self.serial_conn.in_waiting).decode('utf-8', errors='ignore')
+                        buffer += data
+
+                        # Process complete lines (commands end with newline)
+                        while '\n' in buffer:
+                            line_end = buffer.find('\n')
+                            line = buffer[:line_end].strip()
+                            buffer = buffer[line_end + 1:]
+
+                            if line:  # Skip empty lines
+                                self.process_command(line)
+
+                time.sleep(0.01)  # Small delay to prevent busy waiting
+
+            except serial.SerialException as e:
+                print(f"❌ Serial error: {e}")
+                break
+            except KeyboardInterrupt:
+                print("\n🛑 Interrupted by user")
+                break
+            except Exception as e:
+                print(f"❌ Unexpected error: {e}")
+                break
+
+    def run(self):
+        """Main run method"""
+        print("🚀 ESP32 Smart Display Simulator Server")
+        print("=" * 50)
+
+        if not self.connect():
+            return
+
+        self.running = True
+
+        try:
+            self.listen_loop()
+        except KeyboardInterrupt:
+            print("\n🛑 Shutting down...")
+        finally:
+            self.running = False
+            self.disconnect()
+
+def main():
+    parser = argparse.ArgumentParser(description="ESP32 Smart Display Simulator Server")
+    parser.add_argument('port', nargs='?', default='COM3', help='Serial port (default: COM3)')
+    parser.add_argument('baudrate', nargs='?', type=int, default=115200, help='Baud rate (default: 115200)')
+
+    args = parser.parse_args()
+
+    simulator = ESP32Simulator(args.port, args.baudrate)
+    simulator.run()
+
+if __name__ == "__main__":
+    main()

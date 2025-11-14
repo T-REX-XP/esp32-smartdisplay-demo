@@ -8,24 +8,89 @@
 
 extern JsonDocument metrics;
 
+// Timer for periodic CPU requests
+static lv_timer_t *cpu_request_timer = NULL;
+
+// Timer callback to request CPU metrics every 5 seconds
+void cpu_request_timer_cb(lv_timer_t *timer) {
+    static JsonDocument request;
+    request.clear();  // Clear previous data
+    request["request"] = "cpu";
+    
+    static String out;
+    out = "";  // Clear previous string
+    serializeJson(request, out);
+    Serial.println(out);
+}
+
 lv_obj_t * ui_Call = NULL;
 lv_obj_t * ui_CPU_Gauge = NULL;
 lv_obj_t * ui_CPU_Label = NULL;
 lv_obj_t * ui_Scrolldots1 = NULL;
+
+// Function to update CPU gauge with current metrics
+void ui_update_cpu_gauge() {
+    // Safety checks
+    if (!ui_CPU_Gauge || !ui_CPU_Label || !metrics.containsKey("cpu")) {
+        return;
+    }
+    
+    // Get CPU value safely
+    const char* cpu_cstr = metrics["cpu"];
+    if (!cpu_cstr) return;
+    
+    int cpu_value = atoi(cpu_cstr);
+    
+    // Clamp value to valid range
+    if (cpu_value < 0) cpu_value = 0;
+    if (cpu_value > 100) cpu_value = 100;
+    
+    // Update gauge and label (use static buffer to avoid memory fragmentation)
+    static char label_buf[16];
+    snprintf(label_buf, sizeof(label_buf), "CPU: %d%%", cpu_value);
+    
+    lv_arc_set_value(ui_CPU_Gauge, cpu_value);
+    lv_label_set_text(ui_CPU_Label, label_buf);
+}
 // event funtions
 void ui_event_Call(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
 
     if(event_code == LV_EVENT_SCREEN_LOADED) {
-        // Update CPU gauge
-        if (metrics["cpu"].is<String>()) {
-            String cpu_str = metrics["cpu"];
-            int cpu_value = cpu_str.toInt();
-            lv_arc_set_value(ui_CPU_Gauge, cpu_value);
-            lv_label_set_text_fmt(ui_CPU_Label, "CPU: %d%%", cpu_value);
+        // Start periodic CPU requests every 5 seconds
+        cpu_request_timer = lv_timer_create(cpu_request_timer_cb, 5000, NULL);
+        
+        // Request CPU metrics immediately when CPU screen opens
+        static JsonDocument init_request;
+        init_request.clear();
+        init_request["request"] = "cpu";
+        static String init_out;
+        init_out = "";
+        serializeJson(init_request, init_out);
+        Serial.println(init_out);
+
+        // Update CPU gauge with current metrics if available
+        if (metrics.containsKey("cpu")) {
+            const char* cpu_cstr = metrics["cpu"];
+            if (cpu_cstr) {
+                int cpu_value = atoi(cpu_cstr);
+                if (cpu_value >= 0 && cpu_value <= 100) {
+                    lv_arc_set_value(ui_CPU_Gauge, cpu_value);
+                    static char init_label_buf[16];
+                    snprintf(init_label_buf, sizeof(init_label_buf), "CPU: %d%%", cpu_value);
+                    lv_label_set_text(ui_CPU_Label, init_label_buf);
+                }
+            }
         }
         scrolldot_Animation(ui_Scrolldots1, 0);
+    }
+    if(event_code == LV_EVENT_SCREEN_UNLOADED) {
+        // Stop the CPU request timer when leaving the screen
+        if(cpu_request_timer) {
+            lv_timer_del(cpu_request_timer);
+            cpu_request_timer = NULL;
+        }
     }
     if(event_code == LV_EVENT_GESTURE &&  lv_indev_get_gesture_dir(lv_indev_active()) == LV_DIR_LEFT) {
         lv_indev_wait_release(lv_indev_active());

@@ -125,14 +125,48 @@ Switch between UI screens remotely:
 {"screen": "Weather"}
 ```
 
+### Data Requests
+
+Request specific data from the server:
+
+#### Alarm List Request
+```json
+{"request": "alarms"}
+```
+
+**Response:**
+```json
+{
+  "alarms": [
+    {"time": "08:00", "label": "Morning Coffee", "enabled": true},
+    {"time": "12:30", "label": "Lunch Break", "enabled": true}
+  ]
+}
+```
+
+#### CPU Metrics Request
+```json
+{"request": "cpu"}
+```
+
+**Response:**
+```json
+{"cpu": "45", "temp_c": "38.5", "fs_free": "1.2", "fs_used": "2.8"}
+```
+
 ### CPU Load Gauge
 
 The Call screen now displays a real-time CPU usage gauge that updates automatically when metrics are received:
 
-- Visual analog meter with needle indicator (0-100%)
+- Visual analog gauge with filled arc indicator (0-100%)
 - Percentage label below the gauge
 - Updates in real-time as `cpu` metric values are sent via UART
-- Smooth needle animation for better visual feedback
+- Continuous monitoring when screen is active
+
+**Automatic Behavior:**
+- When Call screen opens: MCU starts sending `{"request": "cpu"}` every 5 seconds
+- Server responds with CPU metrics for each request
+- When leaving Call screen: CPU monitoring stops
 
 **Example CPU Update:**
 ```json
@@ -149,6 +183,11 @@ Update the alarm list dynamically:
   {"time": "14:30", "label": "Meeting", "enabled": false}
 ]}
 ```
+
+**Automatic Behavior:**
+- When Alarm screen opens: MCU sends `{"request": "alarms"}`
+- Server responds with current alarm list
+- Screen updates automatically with received data
 
 **Alarm Properties:**
 - `time`: Alarm time in "HH:MM" format (string)

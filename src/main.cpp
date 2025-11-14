@@ -50,19 +50,19 @@ static lv_coord_t touch_start_y = 0;
 static bool touch_active = false;
 static unsigned long touch_start_time = 0;
 
-// LVGL objects for menu display
+// LVGL objects for menu display (legacy - not used in new UI)
 static lv_obj_t *menu_screen = nullptr;
 static lv_obj_t *menu_title = nullptr;
 static lv_obj_t *menu_content = nullptr;
 static lv_obj_t *menu_status = nullptr;
 static lv_obj_t *page_indicator = nullptr;
 
-// Gauge and meter objects (unused but kept for compatibility)
-static lv_obj_t *temp_gauge = nullptr;
-static lv_obj_t *cpu_meter = nullptr;
-static lv_obj_t *memory_chart = nullptr;
-static lv_obj_t *storage_arc = nullptr;
-static lv_obj_t *network_bar = nullptr;
+// Gauge and meter objects (legacy - not used in new UI)
+// static lv_obj_t *temp_gauge = nullptr;
+// static lv_obj_t *cpu_meter = nullptr;
+// static lv_obj_t *memory_chart = nullptr;
+// static lv_obj_t *storage_arc = nullptr;
+// static lv_obj_t *network_bar = nullptr;
 
 // Animation timers (unused but kept for compatibility)
 static lv_timer_t *anim_timer = nullptr;
@@ -383,6 +383,11 @@ void handleSerial() {
                 // Assume it's metrics
                 metrics = doc;
                 lastMetricsMs = millis();
+                
+                // Update CPU gauge if Call screen is active and CPU data is available
+                if (ui_Call && lv_scr_act() == ui_Call && doc.containsKey("cpu")) {
+                    ui_update_cpu_gauge();
+                }
             }
         }
     }
@@ -412,6 +417,23 @@ void setup()
     delay(5000);
 #endif
     Serial.begin(115200);
+    Serial.setTimeout(1000);  // Set timeout to prevent hanging
+    Serial.setDebugOutput(false);  // Disable debug output to serial initially
+    
+    // Disable auto-reset on serial connection by setting GPIO0 HIGH
+    pinMode(0, OUTPUT);
+    digitalWrite(0, HIGH);
+    
+    // Extended wait for serial connection to stabilize
+    delay(3000);
+    
+    // Clear any pending serial data that might have caused the reset
+    while(Serial.available()) {
+        Serial.read();
+        delay(10);
+    }
+    
+    // Re-enable debug output after stabilization
     Serial.setDebugOutput(true);
     log_i("Board: %s", BOARD_NAME);
     log_i("CPU: %s rev%d, CPU Freq: %d Mhz, %d core(s)", ESP.getChipModel(), ESP.getChipRevision(), getCpuFrequencyMhz(), ESP.getChipCores());
