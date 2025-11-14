@@ -4,6 +4,16 @@
 // Project name: Smart_Gadget
 
 #include "../ui.h"
+#include <vector>
+#include <string>
+
+struct Alarm {
+    std::string time;
+    std::string label;
+    bool enabled;
+};
+
+extern std::vector<Alarm> alarms;
 
 lv_obj_t * ui_Alarm = NULL;
 lv_obj_t * ui_Alarm_container = NULL;
@@ -13,6 +23,7 @@ lv_obj_t * ui_Alarm_Comp1 = NULL;
 lv_obj_t * ui_Alarm_Comp2 = NULL;
 lv_obj_t * ui_Alarm_Comp3 = NULL;
 lv_obj_t * ui_Scrolldots5 = NULL;
+lv_obj_t * ui_No_alarm = NULL;
 // event funtions
 void ui_event_Alarm(lv_event_t * e)
 {
@@ -20,10 +31,7 @@ void ui_event_Alarm(lv_event_t * e)
 
     if(event_code == LV_EVENT_SCREEN_LOADED) {
         upanim_Animation(ui_Set_alarm, 100);
-        upanim_Animation(ui_Alarm_Comp, 200);
-        upanim_Animation(ui_Alarm_Comp1, 300);
-        upanim_Animation(ui_Alarm_Comp2, 400);
-        upanim_Animation(ui_Alarm_Comp3, 500);
+        // Removed animations for dynamic alarm components
         scrolldot_Animation(ui_Scrolldots5, 0);
     }
     if(event_code == LV_EVENT_GESTURE &&  lv_indev_get_gesture_dir(lv_indev_active()) == LV_DIR_RIGHT) {
@@ -53,6 +61,7 @@ void ui_Alarm_screen_init(void)
     lv_obj_set_align(ui_Alarm_container, LV_ALIGN_CENTER);
     lv_obj_set_style_bg_color(ui_Alarm_container, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_Alarm_container, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_add_flag(ui_Alarm_container, LV_OBJ_FLAG_SCROLLABLE);  // Make it scrollable for dynamic content
 
     ui_Set_alarm = ui_Small_Label_create(ui_Alarm_container);
     lv_obj_set_x(ui_Set_alarm, 0);
@@ -62,39 +71,36 @@ void ui_Alarm_screen_init(void)
     lv_obj_set_style_text_color(ui_Set_alarm, lv_color_hex(0x000746), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_Set_alarm, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_Alarm_Comp = ui_Alarm_Comp_create(ui_Alarm_container);
-    lv_obj_set_x(ui_Alarm_Comp, 0);
-    lv_obj_set_y(ui_Alarm_Comp, 43);
+    // Dynamic alarm components
+    extern std::vector<Alarm> alarms;
+    int y_pos = 43;
+    for (size_t i = 0; i < alarms.size(); ++i) {
+        lv_obj_t *alarm_comp = ui_Alarm_Comp_create(ui_Alarm_container);
+        lv_obj_set_x(alarm_comp, 0);
+        lv_obj_set_y(alarm_comp, y_pos);
 
-    ui_Alarm_Comp1 = ui_Alarm_Comp_create(ui_Alarm_container);
-    lv_obj_set_x(ui_Alarm_Comp1, 0);
-    lv_obj_set_y(ui_Alarm_Comp1, 128);
+        lv_label_set_text(ui_comp_get_child(alarm_comp, UI_COMP_ALARM_COMP_ALARM_NUM2), alarms[i].time.c_str());
+        lv_label_set_text(ui_comp_get_child(alarm_comp, UI_COMP_ALARM_COMP_PERIOD), alarms[i].label.c_str());
 
-    lv_label_set_text(ui_comp_get_child(ui_Alarm_Comp1, UI_COMP_ALARM_COMP_ALARM_NUM2), "8:00");
+        if (alarms[i].enabled) {
+            lv_obj_add_state(ui_comp_get_child(alarm_comp, UI_COMP_ALARM_COMP_SWITCH1), LV_STATE_CHECKED);
+        } else {
+            lv_obj_clear_state(ui_comp_get_child(alarm_comp, UI_COMP_ALARM_COMP_SWITCH1), LV_STATE_CHECKED);
+        }
 
-    lv_label_set_text(ui_comp_get_child(ui_Alarm_Comp1, UI_COMP_ALARM_COMP_PERIOD), "Breakfast");
+        y_pos += 85;  // Adjust spacing
+    }
 
-    lv_obj_add_state(ui_comp_get_child(ui_Alarm_Comp1, UI_COMP_ALARM_COMP_SWITCH1), LV_STATE_CHECKED);       /// States
-
-    ui_Alarm_Comp2 = ui_Alarm_Comp_create(ui_Alarm_container);
-    lv_obj_set_x(ui_Alarm_Comp2, 0);
-    lv_obj_set_y(ui_Alarm_Comp2, 213);
-
-    lv_label_set_text(ui_comp_get_child(ui_Alarm_Comp2, UI_COMP_ALARM_COMP_ALARM_NUM2), "9:30");
-
-    lv_label_set_text(ui_comp_get_child(ui_Alarm_Comp2, UI_COMP_ALARM_COMP_PERIOD), "Yoga");
-
-    ui_Alarm_Comp3 = ui_Alarm_Comp_create(ui_Alarm_container);
-    lv_obj_set_x(ui_Alarm_Comp3, 0);
-    lv_obj_set_y(ui_Alarm_Comp3, 298);
-    lv_obj_set_style_border_color(ui_Alarm_Comp3, lv_color_hex(0x293062), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_opa(ui_Alarm_Comp3, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_width(ui_Alarm_Comp3, 1, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_side(ui_Alarm_Comp3, LV_BORDER_SIDE_NONE, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    lv_label_set_text(ui_comp_get_child(ui_Alarm_Comp3, UI_COMP_ALARM_COMP_ALARM_NUM2), "11:00");
-
-    lv_label_set_text(ui_comp_get_child(ui_Alarm_Comp3, UI_COMP_ALARM_COMP_PERIOD), "Sleep");
+    // Fallback for empty alarm list
+    if (alarms.empty()) {
+        ui_No_alarm = ui_Small_Label_create(ui_Alarm_container);
+        lv_obj_set_x(ui_No_alarm, 0);
+        lv_obj_set_y(ui_No_alarm, 43);
+        lv_obj_set_align(ui_No_alarm, LV_ALIGN_TOP_MID);
+        lv_label_set_text(ui_No_alarm, "No alarm");
+        lv_obj_set_style_text_color(ui_No_alarm, lv_color_hex(0x000746), LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_text_opa(ui_No_alarm, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    }
 
     ui_Scrolldots5 = ui_Scrolldots_create(ui_Alarm);
     lv_obj_set_x(ui_Scrolldots5, 0);
@@ -140,5 +146,6 @@ void ui_Alarm_screen_destroy(void)
     ui_Alarm_Comp2 = NULL;
     ui_Alarm_Comp3 = NULL;
     ui_Scrolldots5 = NULL;
+    ui_No_alarm = NULL;
 
 }

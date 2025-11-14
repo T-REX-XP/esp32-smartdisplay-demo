@@ -6,6 +6,17 @@
 
 #include <esp32_smartdisplay.h>
 #include <ui/ui.h>
+#include <vector>
+
+// Alarm structure
+struct Alarm {
+    String time;
+    String label;
+    bool enabled;
+};
+
+// Global alarms list
+std::vector<Alarm> alarms;
 
 // Define button pins for navigation (using available GPIOs)
 // Note: GPIO34 and GPIO35 are input-only and don't have pull-ups
@@ -299,14 +310,65 @@ void requestMetrics() {
 }
 
 void handleSerial() {
-    // Handle incoming serial data for metrics
-    // This would be used to receive actual metrics from external system
+    // Handle incoming serial data for metrics and alarms
     while(Serial.available()) {
         String line = Serial.readStringUntil('\n');
         if(line.length() == 0) return;
-        DeserializationError err = deserializeJson(metrics, line);
+        JsonDocument doc;
+        DeserializationError err = deserializeJson(doc, line);
         if(!err) {
-            lastMetricsMs = millis();
+            if (doc.containsKey("alarms")) {
+                alarms.clear();
+                JsonArray alarmsArray = doc["alarms"];
+                for (JsonObject alarmObj : alarmsArray) {
+                    Alarm a;
+                    a.time = alarmObj["time"].as<String>();
+                    a.label = alarmObj["label"].as<String>();
+                    a.enabled = alarmObj["enabled"];
+                    alarms.push_back(a);
+                }
+                // Refresh Alarm screen if active
+                if (lv_scr_act() == ui_Alarm) {
+                    // Clear existing alarm components
+                    lv_obj_clean(ui_Alarm_container);
+                    // Recreate ui_Set_alarm
+                    ui_Set_alarm = ui_Small_Label_create(ui_Alarm_container);
+                    lv_obj_set_x(ui_Set_alarm, 0);
+                    lv_obj_set_y(ui_Set_alarm, 17);
+                    lv_obj_set_align(ui_Set_alarm, LV_ALIGN_TOP_MID);
+                    lv_label_set_text(ui_Set_alarm, "Set alarm");
+                    lv_obj_set_style_text_color(ui_Set_alarm, lv_color_hex(0x000746), LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_text_opa(ui_Set_alarm, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    // Recreate dynamic alarms
+                    int y_pos = 43;
+                    for (size_t i = 0; i < alarms.size(); ++i) {
+                        lv_obj_t *alarm_comp = ui_Alarm_Comp_create(ui_Alarm_container);
+                        lv_obj_set_x(alarm_comp, 0);
+                        lv_obj_set_y(alarm_comp, y_pos);
+                        lv_label_set_text(ui_comp_get_child(alarm_comp, UI_COMP_ALARM_COMP_ALARM_NUM2), alarms[i].time.c_str());
+                        lv_label_set_text(ui_comp_get_child(alarm_comp, UI_COMP_ALARM_COMP_PERIOD), alarms[i].label.c_str());
+                        if (alarms[i].enabled) {
+                            lv_obj_add_state(ui_comp_get_child(alarm_comp, UI_COMP_ALARM_COMP_SWITCH1), LV_STATE_CHECKED);
+                        } else {
+                            lv_obj_clear_state(ui_comp_get_child(alarm_comp, UI_COMP_ALARM_COMP_SWITCH1), LV_STATE_CHECKED);
+                        }
+                        y_pos += 85;
+                    }
+                    if (alarms.empty()) {
+                        ui_No_alarm = ui_Small_Label_create(ui_Alarm_container);
+                        lv_obj_set_x(ui_No_alarm, 0);
+                        lv_obj_set_y(ui_No_alarm, 43);
+                        lv_obj_set_align(ui_No_alarm, LV_ALIGN_TOP_MID);
+                        lv_label_set_text(ui_No_alarm, "No alarm");
+                        lv_obj_set_style_text_color(ui_No_alarm, lv_color_hex(0x000746), LV_PART_MAIN | LV_STATE_DEFAULT);
+                        lv_obj_set_style_text_opa(ui_No_alarm, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    }
+                }
+            } else {
+                // Assume it's metrics
+                metrics = doc;
+                lastMetricsMs = millis();
+            }
         }
     }
 }

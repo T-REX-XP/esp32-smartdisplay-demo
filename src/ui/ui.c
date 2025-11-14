@@ -240,7 +240,7 @@ void ui_init(void)
     lv_disp_set_theme(dispp, theme);
     ui_Splash_screen_init();
     ui_Clock_screen_init();
-    ui_Call_screen_init();
+    // ui_Call_screen_init();
     ui_Chat_screen_init();
     ui_Music_Player_screen_init();
     ui_Weather_screen_init();
@@ -256,7 +256,7 @@ void ui_destroy(void)
 {
     ui_Splash_screen_destroy();
     ui_Clock_screen_destroy();
-    ui_Call_screen_destroy();
+    // ui_Call_screen_destroy();  // Disabled as requested
     ui_Chat_screen_destroy();
     ui_Music_Player_screen_destroy();
     ui_Weather_screen_destroy();
