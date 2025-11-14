@@ -15,6 +15,47 @@ Example with sound! (if WiFi credentials are provided and speaker attached)
 
 ![Example](assets/PXL_20231130_225143662.jpg)
 
+## Web UI Testing Tool
+
+A comprehensive web interface is available for testing the ESP32 simulator functionality:
+
+### Quick Start (Windows)
+```bash
+# Run with real ESP32 hardware (same as esp32_simulator.py)
+run_webui_test.bat
+
+# Or run with mock simulator (no hardware needed)
+run_webui.bat
+```
+
+### Features
+- **Real Serial Communication**: Same UART protocol as original simulator
+- **Web Monitoring**: Real-time logs and responses in browser
+- **Manual Testing**: Send custom commands and test all features
+- **Screen Navigation**: Test all UI screens with one click
+- **Data Requests**: Get CPU metrics, storage info, and alarm lists
+
+### Hardware Mode (Full Compatibility)
+For testing with actual ESP32:
+```bash
+python esp32_simulator_webui_test.py COM3 115200
+```
+- **Identical functionality** to `esp32_simulator.py`
+- Connects to real ESP32 hardware
+- Handles all JSON commands and MessagePack responses
+- Web interface for monitoring and additional testing
+
+### Test Mode (No Hardware)
+For development without ESP32:
+```bash
+python esp32_simulator_webui.py COM3 115200
+```
+- Mock simulator for UI testing
+- Generates realistic responses
+- Perfect for interface development
+
+See [README_WEBUI.md](README_WEBUI.md) for detailed documentation.
+
 ## Version history
 
 - December 2024

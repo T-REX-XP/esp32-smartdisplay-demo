@@ -412,23 +412,33 @@ void setup()
 #ifdef ARDUINO_USB_CDC_ON_BOOT
     delay(5000);
 #endif
-    Serial.begin(115200);
-    Serial.setTimeout(1000);  // Set timeout to prevent hanging
-    Serial.setDebugOutput(false);  // Disable debug output to serial initially
-    
-    // Disable auto-reset on serial connection by setting GPIO0 HIGH
+
+    // IMMEDIATELY disable auto-reset before any serial operations
     pinMode(0, OUTPUT);
     digitalWrite(0, HIGH);
     
-    // Extended wait for serial connection to stabilize
-    delay(3000);
-    
-    // Clear any pending serial data that might have caused the reset
-    while(Serial.available()) {
+    // Additional reset prevention - set multiple GPIOs if needed
+    pinMode(1, OUTPUT);
+    digitalWrite(1, LOW);  // TX pin low initially    // Minimal delay for reset prevention
+    delay(100);
+
+    Serial.begin(115200);
+    Serial.setTimeout(1000);
+    Serial.setDebugOutput(false);
+
+    // Keep GPIO0 HIGH throughout initialization
+    digitalWrite(0, HIGH);
+
+    // Quick stabilization - much shorter delay
+    delay(500);
+
+    // Clear any pending serial data quickly (non-blocking approach)
+    unsigned long clearStart = millis();
+    while(Serial.available() && (millis() - clearStart) < 200) {  // Max 200ms for clearing
         Serial.read();
-        delay(10);
+        delay(1);
     }
-    
+
     // Re-enable debug output after stabilization
     Serial.setDebugOutput(true);
     log_i("Board: %s", BOARD_NAME);
@@ -440,9 +450,9 @@ void setup()
     // Initialize button pins
     pinMode(BTN_UP, INPUT_PULLUP);
     // BTN_DOWN and BTN_SELECT use same pin as BTN_UP for now
-    
+
     // Wait a bit to avoid false button reads on startup
-    delay(500);
+    delay(100);
 
     smartdisplay_init();
 
