@@ -364,6 +364,21 @@ void handleSerial() {
                         lv_obj_set_style_text_opa(ui_No_alarm, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
                     }
                 }
+            } else if (doc.containsKey("screen")) {
+                String screen = doc["screen"];
+                if (screen == "Clock") {
+                    _ui_screen_change(&ui_Clock, LV_SCR_LOAD_ANIM_FADE_ON, 0, 0, &ui_Clock_screen_init);
+                } else if (screen == "Weather") {
+                    _ui_screen_change(&ui_Weather, LV_SCR_LOAD_ANIM_FADE_ON, 0, 0, &ui_Weather_screen_init);
+                } else if (screen == "Alarm") {
+                    _ui_screen_change(&ui_Alarm, LV_SCR_LOAD_ANIM_FADE_ON, 0, 0, &ui_Alarm_screen_init);
+                } else if (screen == "Chat") {
+                    _ui_screen_change(&ui_Chat, LV_SCR_LOAD_ANIM_FADE_ON, 0, 0, &ui_Chat_screen_init);
+                } else if (screen == "Music") {
+                    _ui_screen_change(&ui_Music_Player, LV_SCR_LOAD_ANIM_FADE_ON, 0, 0, &ui_Music_Player_screen_init);
+                } else if (screen == "Splash") {
+                    _ui_screen_change(&ui_Splash, LV_SCR_LOAD_ANIM_FADE_ON, 0, 0, &ui_Splash_screen_init);
+                }
             } else {
                 // Assume it's metrics
                 metrics = doc;

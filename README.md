@@ -99,6 +99,66 @@ The menu system can receive metrics via Serial communication:
 - `fs_free`: Free filesystem space in MB (string)
 - `fs_used`: Used filesystem space in MB (string)
 
+## UART Commands
+
+The device supports various commands via UART (115200 baud) for remote control and data updates. All commands are JSON-formatted and must end with a newline.
+
+### Screen Navigation
+
+Switch between UI screens remotely:
+
+```json
+{"screen": "ScreenName"}
+```
+
+**Supported Screens:**
+- `"Clock"`: Main clock display
+- `"Weather"`: Weather information
+- `"Alarm"`: Alarm management
+- `"Chat"`: Chat interface
+- `"Music"`: Music player
+- `"Splash"`: Splash screen
+
+**Example:**
+```json
+{"screen": "Weather"}
+```
+
+### Alarm Management
+
+Update the alarm list dynamically:
+
+```json
+{"alarms": [
+  {"time": "08:00", "label": "Breakfast", "enabled": true},
+  {"time": "14:30", "label": "Meeting", "enabled": false}
+]}
+```
+
+**Alarm Properties:**
+- `time`: Alarm time in "HH:MM" format (string)
+- `label`: Alarm description/label (string)
+- `enabled`: Whether the alarm is active (boolean)
+
+**Notes:**
+- Sending an empty array `{"alarms": []}` clears all alarms
+- The Alarm screen updates automatically if currently active
+- Displays "No alarm" when the list is empty
+
+### Metrics Update
+
+Send system metrics for display:
+
+```json
+{"temp_c": "42.5", "cpu": "15", "fs_free": "1.2", "fs_used": "2.8"}
+```
+
+**Supported Metrics:**
+- `temp_c`: External temperature in Celsius (string)
+- `cpu`: CPU usage percentage (string)
+- `fs_free`: Free filesystem space in MB (string)
+- `fs_used`: Used filesystem space in MB (string)
+
 ### Payload Examples
 
 #### Standard Metrics Update
@@ -118,17 +178,25 @@ The menu system can receive metrics via Serial communication:
 
 ### Communication Protocol
 
-#### Receiving Metrics
+#### Receiving Commands
 Send JSON objects via Serial (115200 baud) ending with newline:
 
 ```bash
+# Update metrics
 echo '{"temp_c":"45","cpu":"30"}' > /dev/ttyUSB0
+
+# Switch screen
+echo '{"screen":"Weather"}' > /dev/ttyUSB0
+
+# Update alarms
+echo '{"alarms":[{"time":"08:00","label":"Breakfast","enabled":true}]}' > /dev/ttyUSB0
 ```
 
 #### Automatic Updates
 - The system requests simulated metrics every 1 second
 - Real metrics should be sent via Serial when available
 - Display updates every 250ms
+- Screen navigation and alarm updates are processed immediately
 
 ### Integration Examples
 
@@ -148,9 +216,21 @@ while True:
         "fs_free": "1.5",
         "fs_used": "2.8"
     }
-    
     ser.write((json.dumps(metrics) + "\n").encode())
-    time.sleep(1)
+    
+    # Switch to Weather screen
+    ser.write(b'{"screen": "Weather"}\n')
+    
+    # Update alarms
+    alarms = {
+        "alarms": [
+            {"time": "08:00", "label": "Breakfast", "enabled": True},
+            {"time": "14:30", "label": "Meeting", "enabled": False}
+        ]
+    }
+    ser.write((json.dumps(alarms) + "\n").encode())
+    
+    time.sleep(5)
 ```
 
 #### Arduino Example
@@ -162,6 +242,29 @@ void sendMetrics() {
     doc["temp_c"] = String(temperatureSensor.read());
     doc["cpu"] = String(getCpuUsage());
     doc["fs_free"] = String(getFreeSpace());
+    
+    Serial.println(doc.as<String>());
+}
+
+void switchToWeather() {
+    JsonDocument doc;
+    doc["screen"] = "Weather";
+    Serial.println(doc.as<String>());
+}
+
+void updateAlarms() {
+    JsonDocument doc;
+    JsonArray alarms = doc["alarms"].to<JsonArray>();
+    
+    JsonObject alarm1 = alarms.createNestedObject();
+    alarm1["time"] = "08:00";
+    alarm1["label"] = "Breakfast";
+    alarm1["enabled"] = true;
+    
+    JsonObject alarm2 = alarms.createNestedObject();
+    alarm2["time"] = "14:30";
+    alarm2["label"] = "Meeting";
+    alarm2["enabled"] = false;
     
     Serial.println(doc.as<String>());
 }
@@ -227,7 +330,8 @@ if(millis() - lastReq > 1000) {
 ### Dependencies
 
 - **ArduinoJson 7.x**: For JSON parsing and serialization
-- **WiFi.h**: For WiFi status monitoring
+- **ArduinoOTA**: For over-the-air firmware updates (built-in)
+- **WiFi.h**: For WiFi connectivity and OTA
 - **esp32-smartdisplay**: For display and hardware integration
 
 Add to `platformio.ini`:
