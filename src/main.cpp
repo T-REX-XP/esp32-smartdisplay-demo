@@ -296,13 +296,25 @@ void createMenuScreen() {
 }
 
 void requestMetrics() {
-    // Simulate receiving metrics from external system
-    // In real implementation, this would come from Serial2 or other interface
-    metrics["temp_c"] = "42";
-    metrics["cpu"] = "15";
-    metrics["fs_free"] = "1.2";
-    metrics["fs_used"] = "2.8";
-    lastMetricsMs = millis();
+    // Send requests to simulator for real metrics data
+    static unsigned long lastCpuRequest = 0;
+    static unsigned long lastStorageRequest = 0;
+    unsigned long now = millis();
+
+    // Request CPU data every 1.5 seconds ONLY when Call screen (CPU load screen) is active
+    if (ui_Call && lv_scr_act() == ui_Call && now - lastCpuRequest > 1500) {
+        Serial.println("{\"request\": \"cpu\"}");
+        lastCpuRequest = now;
+    }
+
+    // Request storage data every 5 seconds
+    if (now - lastStorageRequest > 5000) {
+        Serial.println("{\"request\": \"storage\"}");
+        lastStorageRequest = now;
+    }
+
+    // Note: Temperature is read locally from ESP32 sensor
+    // CPU and storage data come from simulator
 }
 
 void handleSerial() {
@@ -477,9 +489,9 @@ void loop()
     
     // Request metrics periodically
     static unsigned long lastReq = 0; 
-    if(millis() - lastReq > 1000) { 
-        lastReq = millis(); 
-        // requestMetrics(); 
+    if(millis() - lastReq > 1000) {
+        lastReq = millis();
+        requestMetrics();
     }
     
     // Handle button input with debouncing

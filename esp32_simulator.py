@@ -113,7 +113,9 @@ class ESP32Simulator:
 
     def handle_cpu_request(self):
         """Send current CPU metrics to ESP32"""
+        print("🔄 CPU request received from ESP32")
         cpu_usage = self.get_real_cpu_usage()
+        print(f"📊 Current CPU usage: {cpu_usage}%")
 
         # Get additional system metrics
         try:
@@ -126,8 +128,9 @@ class ESP32Simulator:
                 "fs_free": f"{disk.free / (1024*1024):.1f}",  # MB
                 "fs_used": f"{disk.used / (1024*1024):.1f}"   # MB
             }
+            print(f"📤 Sending CPU metrics: CPU={cpu_usage}%, Temp={metrics['temp_c']}°C, Free={metrics['fs_free']}MB")
         except Exception as e:
-            print(f"Error getting system metrics: {e}")
+            print(f"❌ Error getting system metrics: {e}")
             # Fallback to basic metrics
             metrics = {
                 "cpu": str(cpu_usage),
@@ -135,6 +138,7 @@ class ESP32Simulator:
                 "fs_free": "1024.0",
                 "fs_used": "2048.0"
             }
+            print(f"📤 Sending fallback CPU metrics: CPU={cpu_usage}%")
 
         self.send_data(metrics)
 
@@ -183,8 +187,11 @@ class ESP32Simulator:
 
     def handle_storage_request(self):
         """Send storage drive information to ESP32"""
-        print("💾 Sending storage information...")
+        print("💾 Storage request received from ESP32")
         storage_info = self.get_storage_info()
+        print(f"📊 Found {len(storage_info)} storage devices")
+        for i, drive in enumerate(storage_info):
+            print(f"  💽 Drive {i+1}: {drive['mountpoint']} - {drive['used_percent']}% used ({drive['free_gb']}GB free)")
         self.send_data({"storage": storage_info})
 
     def generate_cpu_usage(self):
