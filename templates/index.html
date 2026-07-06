@@ -35,21 +35,11 @@
             font-family: 'Courier New', monospace;
             font-size: 0.875rem;
         }
-        .status-connected {
-            color: #198754;
-        }
-        .status-disconnected {
-            color: #dc3545;
-        }
-        .btn-command {
-            margin: 0.25rem;
-        }
-        .command-group {
-            margin-bottom: 1rem;
-        }
-        .navbar-brand {
-            font-weight: bold;
-        }
+        .status-connected { color: #198754; }
+        .status-disconnected { color: #dc3545; }
+        .btn-command { margin: 0.25rem; }
+        .command-group { margin-bottom: 1rem; }
+        .navbar-brand { font-weight: bold; }
         .card-header {
             background-color: #e9ecef;
             border-bottom: 1px solid #dee2e6;
@@ -63,6 +53,47 @@
             white-space: pre-wrap;
             word-wrap: break-word;
         }
+        .nav-tabs .nav-link { font-weight: 500; }
+        .nav-tabs .nav-link.active { font-weight: 600; }
+        .metric-card {
+            border-left: 4px solid #0d6efd;
+            height: 100%;
+        }
+        .metric-card .metric-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #212529;
+        }
+        .metric-card .metric-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: #6c757d;
+            letter-spacing: 0.03em;
+        }
+        .screen-pill {
+            display: inline-block;
+            padding: 0.35rem 0.75rem;
+            border-radius: 2rem;
+            background: #e7f1ff;
+            color: #0d6efd;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+        .badge-rdcp-req { background-color: #0dcaf0; }
+        .badge-rdcp-evt { background-color: #6f42c1; }
+        .badge-rdcp-res { background-color: #198754; }
+        .badge-legacy { background-color: #fd7e14; }
+        .msg-entry {
+            border-bottom: 1px solid #dee2e6;
+            padding: 0.5rem 0;
+        }
+        .msg-entry:last-child { border-bottom: none; }
+        .section-hint {
+            font-size: 0.875rem;
+            color: #6c757d;
+            margin-bottom: 0.75rem;
+        }
+        #metricsPreview .col-md-4 { margin-bottom: 0.75rem; }
     </style>
 </head>
 <body>
@@ -71,8 +102,9 @@
             <a class="navbar-brand" href="#">
                 <i class="fas fa-microchip"></i> ESP32 Simulator Web UI
             </a>
-            <div class="d-flex">
-                <span id="connectionStatus" class="navbar-text me-3">
+            <div class="d-flex align-items-center gap-3">
+                <span class="navbar-text text-white-50 small">RDCP v1 · Router + Demo</span>
+                <span id="connectionStatus" class="navbar-text">
                     <i class="fas fa-circle status-disconnected"></i> Disconnected
                 </span>
             </div>
@@ -82,7 +114,7 @@
     <div class="container mt-4">
         <!-- Connection Settings -->
         <div class="row mb-4">
-            <div class="col-md-12">
+            <div class="col-12">
                 <div class="card">
                     <div class="card-header">
                         <i class="fas fa-plug"></i> Connection Settings
@@ -124,88 +156,210 @@
             </div>
         </div>
 
-        <!-- Command Controls -->
-        <div class="row mb-4">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <i class="fas fa-mobile-alt"></i> Screen Navigation
-                    </div>
-                    <div class="card-body">
-                        <div class="command-group">
-                            <p class="mb-2">Send screen change commands:</p>
-                            <button type="button" class="btn btn-outline-primary btn-command" data-command='{"screen": "Clock"}'>
-                                <i class="fas fa-clock"></i> Clock
-                            </button>
-                            <button type="button" class="btn btn-outline-primary btn-command" data-command='{"screen": "Weather"}'>
-                                <i class="fas fa-cloud-sun"></i> Weather
-                            </button>
-                            <button type="button" class="btn btn-outline-primary btn-command" data-command='{"screen": "Alarm"}'>
-                                <i class="fas fa-bell"></i> Alarm
-                            </button>
-                            <button type="button" class="btn btn-outline-primary btn-command" data-command='{"screen": "Chat"}'>
-                                <i class="fas fa-comments"></i> Chat
-                            </button>
+        <!-- Active screen indicator -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <span class="screen-pill" id="activeScreenPill">
+                    <i class="fas fa-display"></i> MCU screen: <span id="activeScreenName">—</span>
+                </span>
+            </div>
+        </div>
+
+        <!-- Tab navigation -->
+        <ul class="nav nav-tabs mb-3" id="mainTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="router-tab" data-bs-toggle="tab" data-bs-target="#routerPanel" type="button" role="tab">
+                    <i class="fas fa-server"></i> Router
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="demo-tab" data-bs-toggle="tab" data-bs-target="#demoPanel" type="button" role="tab">
+                    <i class="fas fa-mobile-alt"></i> Demo Gadget
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="debug-tab" data-bs-toggle="tab" data-bs-target="#debugPanel" type="button" role="tab">
+                    <i class="fas fa-bug"></i> Debug
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content mb-4">
+            <!-- Router tab -->
+            <div class="tab-pane fade show active" id="routerPanel" role="tabpanel">
+                <div class="row mb-4">
+                    <div class="col-lg-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <i class="fas fa-arrows-alt"></i> RDCP Screen Navigation (host → MCU)
+                            </div>
+                            <div class="card-body">
+                                <p class="section-hint">Send <code>cmd</code> frames to jump the router UI to a screen.</p>
+                                <div id="routerScreenButtons" class="command-group"></div>
+                                <div class="command-group">
+                                    <button type="button" class="btn btn-outline-warning btn-command" id="pushAlertBtn">
+                                        <i class="fas fa-bell"></i> Push Alert Line
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                        <div class="command-group">
-                            <button type="button" class="btn btn-outline-primary btn-command" data-command='{"screen": "Music"}'>
-                                <i class="fas fa-music"></i> Music Player
-                            </button>
-                            <button type="button" class="btn btn-outline-primary btn-command" data-command='{"screen": "Call"}'>
-                                <i class="fas fa-phone"></i> Call
-                            </button>
-                            <button type="button" class="btn btn-outline-primary btn-command" data-command='{"screen": "Splash"}'>
-                                <i class="fas fa-star"></i> Splash
-                            </button>
+                    </div>
+                    <div class="col-lg-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <i class="fas fa-chart-line"></i> Push Metrics (host → MCU)
+                            </div>
+                            <div class="card-body">
+                                <p class="section-hint">Send RDCP <code>res</code> frames — same shape as <code>mcudd</code> scope data.</p>
+                                <div class="row g-2 align-items-end mb-2">
+                                    <div class="col-auto">
+                                        <label for="rdcpResId" class="form-label small mb-0">Request ID</label>
+                                        <input type="number" class="form-control form-control-sm" id="rdcpResId" value="1" min="1" style="width:5rem">
+                                    </div>
+                                </div>
+                                <div id="routerScopeButtons" class="command-group"></div>
+                                <div class="command-group">
+                                    <p class="section-hint mb-1">Legacy shim (MCU polls with flat JSON):</p>
+                                    <div id="routerLegacyButtons"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <i class="fas fa-gauge-high"></i> Metrics Preview
+                                <span class="float-end small text-muted" id="metricsScopeLabel">No data yet</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="row" id="metricsPreview">
+                                    <div class="col-12 text-muted">Push a scope or connect router firmware to populate metrics.</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <i class="fas fa-database"></i> Data Requests
+            <!-- Demo tab -->
+            <div class="tab-pane fade" id="demoPanel" role="tabpanel">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="card">
+                            <div class="card-header">
+                                <i class="fas fa-mobile-alt"></i> Demo Screen Navigation
+                            </div>
+                            <div class="card-body">
+                                <div class="command-group">
+                                    <button type="button" class="btn btn-outline-primary btn-command" data-command='{"screen": "Clock"}'>
+                                        <i class="fas fa-clock"></i> Clock
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary btn-command" data-command='{"screen": "Weather"}'>
+                                        <i class="fas fa-cloud-sun"></i> Weather
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary btn-command" data-command='{"screen": "Alarm"}'>
+                                        <i class="fas fa-bell"></i> Alarm
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary btn-command" data-command='{"screen": "Chat"}'>
+                                        <i class="fas fa-comments"></i> Chat
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary btn-command" data-command='{"screen": "Music"}'>
+                                        <i class="fas fa-music"></i> Music Player
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary btn-command" data-command='{"screen": "Call"}'>
+                                        <i class="fas fa-phone"></i> Call
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary btn-command" data-command='{"screen": "Splash"}'>
+                                        <i class="fas fa-star"></i> Splash
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <div class="command-group">
-                            <p class="mb-2">Request system data:</p>
-                            <button type="button" class="btn btn-outline-success btn-command" data-command='{"request": "alarms"}'>
-                                <i class="fas fa-bell"></i> Get Alarms
-                            </button>
-                            <button type="button" class="btn btn-outline-success btn-command" data-command='{"request": "cpu"}'>
-                                <i class="fas fa-microchip"></i> Get CPU Metrics
-                            </button>
-                            <button type="button" class="btn btn-outline-success btn-command" data-command='{"request": "storage"}'>
-                                <i class="fas fa-hdd"></i> Get Storage Info
-                            </button>
+                    <div class="col-md-6 mb-3">
+                        <div class="card">
+                            <div class="card-header">
+                                <i class="fas fa-database"></i> Demo Data Requests
+                            </div>
+                            <div class="card-body">
+                                <button type="button" class="btn btn-outline-success btn-command" data-command='{"request": "alarms"}'>
+                                    <i class="fas fa-bell"></i> Get Alarms
+                                </button>
+                                <button type="button" class="btn btn-outline-success btn-command" data-command='{"request": "cpu"}'>
+                                    <i class="fas fa-microchip"></i> Get CPU Metrics
+                                </button>
+                                <button type="button" class="btn btn-outline-success btn-command" data-command='{"request": "storage"}'>
+                                    <i class="fas fa-hdd"></i> Get Storage Info
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Custom Command -->
-                <div class="card mt-3">
-                    <div class="card-header">
-                        <i class="fas fa-terminal"></i> Custom Command
-                    </div>
-                    <div class="card-body">
-                        <div class="input-group">
-                            <input type="text" id="customCommand" class="form-control" placeholder='{"request": "cpu"}' value='{"request": "cpu"}'>
-                            <button type="button" class="btn btn-outline-secondary" id="sendCustomBtn">
-                                <i class="fas fa-paper-plane"></i> Send
-                            </button>
+            <!-- Debug tab -->
+            <div class="tab-pane fade" id="debugPanel" role="tabpanel">
+                <div class="row">
+                    <div class="col-lg-6 mb-3">
+                        <div class="card">
+                            <div class="card-header">
+                                <i class="fas fa-terminal"></i> Custom Command (host → MCU)
+                            </div>
+                            <div class="card-body">
+                                <div class="input-group mb-2">
+                                    <input type="text" id="customCommand" class="form-control font-monospace"
+                                           placeholder='{"v":1,"t":"cmd","op":"screen","data":{"screen":"router_system"}}'>
+                                    <button type="button" class="btn btn-outline-secondary" id="sendCustomBtn">
+                                        <i class="fas fa-paper-plane"></i> Send
+                                    </button>
+                                </div>
+                                <div class="d-flex flex-wrap gap-1">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary preset-cmd"
+                                            data-preset='{"v":1,"t":"req","id":1,"op":"metrics","scope":"system"}'>
+                                        req system
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary preset-cmd"
+                                            data-preset='{"v":1,"t":"evt","op":"screen","data":{"screen":"router_wifi","action":"loaded"}}'>
+                                        evt wifi
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary preset-cmd"
+                                            data-preset='{"request":"cpu"}'>
+                                        legacy cpu
+                                    </button>
+                                </div>
+                                <div class="form-text mt-2">
+                                    Commands are written to the serial port. MCU → host traffic appears in the panels below.
+                                </div>
+                            </div>
                         </div>
-                        <div class="form-text">
-                            Enter a valid JSON command to send to the simulator
+                    </div>
+                    <div class="col-lg-6 mb-3">
+                        <div class="card">
+                            <div class="card-header">
+                                <i class="fas fa-book"></i> RDCP v1 Quick Reference
+                            </div>
+                            <div class="card-body small font-monospace">
+                                <div class="mb-2"><strong>MCU → host req:</strong><br>
+                                    {"v":1,"t":"req","id":N,"op":"metrics","scope":"system"}</div>
+                                <div class="mb-2"><strong>Host → MCU res:</strong><br>
+                                    {"v":1,"t":"res","id":N,"data":{...}}</div>
+                                <div class="mb-2"><strong>MCU → host evt:</strong><br>
+                                    {"v":1,"t":"evt","op":"screen","data":{"screen":"router_system","action":"loaded"}}</div>
+                                <div><strong>Host → MCU cmd:</strong><br>
+                                    {"v":1,"t":"cmd","op":"screen","data":{"screen":"router_system"}}</div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Logs and Responses -->
+        <!-- Logs and MCU messages -->
         <div class="row">
-            <div class="col-md-6">
+            <div class="col-md-6 mb-3">
                 <div class="card">
                     <div class="card-header">
                         <i class="fas fa-list"></i> Communication Logs
@@ -220,18 +374,17 @@
                     </div>
                 </div>
             </div>
-
-            <div class="col-md-6">
+            <div class="col-md-6 mb-3">
                 <div class="card">
                     <div class="card-header">
-                        <i class="fas fa-reply"></i> Responses from ESP32
+                        <i class="fas fa-exchange-alt"></i> MCU → Host Messages
                     </div>
                     <div class="card-body">
                         <div id="responseContainer" class="response-container">
-                            <div class="text-muted">No responses yet...</div>
+                            <div class="text-muted">No MCU messages yet (req / evt / legacy)...</div>
                         </div>
                         <button class="btn btn-sm btn-outline-secondary mt-2" id="clearResponsesBtn">
-                            <i class="fas fa-trash"></i> Clear Responses
+                            <i class="fas fa-trash"></i> Clear Messages
                         </button>
                     </div>
                 </div>
@@ -243,8 +396,19 @@
     <script>
         let logEventSource = null;
         let responseEventSource = null;
+        let routerPages = [];
+        let lastMetrics = null;
+        let lastMetricsScope = null;
 
-        // DOM elements
+        const SCOPE_ICONS = {
+            system: 'microchip',
+            network: 'network-wired',
+            clients: 'users',
+            storage: 'hdd',
+            wifi: 'wifi',
+            security: 'shield-halved',
+        };
+
         const connectBtn = document.getElementById('connectBtn');
         const disconnectBtn = document.getElementById('disconnectBtn');
         const connectionStatus = document.getElementById('connectionStatus');
@@ -254,18 +418,34 @@
         const sendCustomBtn = document.getElementById('sendCustomBtn');
         const clearLogsBtn = document.getElementById('clearLogsBtn');
         const clearResponsesBtn = document.getElementById('clearResponsesBtn');
+        const activeScreenName = document.getElementById('activeScreenName');
+        const metricsPreview = document.getElementById('metricsPreview');
+        const metricsScopeLabel = document.getElementById('metricsScopeLabel');
 
-        // Initialize
         updateConnectionStatus();
+        loadRouterPages();
 
-        // Event listeners
         connectBtn.addEventListener('click', connect);
         disconnectBtn.addEventListener('click', disconnect);
         sendCustomBtn.addEventListener('click', sendCustomCommand);
-        clearLogsBtn.addEventListener('click', () => logContainer.innerHTML = '<div class="text-muted">Logs cleared...</div>');
-        clearResponsesBtn.addEventListener('click', () => responseContainer.innerHTML = '<div class="text-muted">Responses cleared...</div>');
+        clearLogsBtn.addEventListener('click', () => {
+            logContainer.innerHTML = '<div class="text-muted">Logs cleared...</div>';
+        });
+        clearResponsesBtn.addEventListener('click', () => {
+            responseContainer.innerHTML = '<div class="text-muted">No MCU messages yet (req / evt / legacy)...</div>';
+        });
 
-        // Command buttons
+        document.getElementById('pushAlertBtn').addEventListener('click', () => {
+            const line = prompt('Alert line to push to MCU:', 'WAN link restored');
+            if (line === null) return;
+            sendCommand({
+                v: 1,
+                t: 'cmd',
+                op: 'push',
+                data: { line },
+            });
+        });
+
         document.querySelectorAll('.btn-command').forEach(btn => {
             btn.addEventListener('click', () => {
                 const command = btn.getAttribute('data-command');
@@ -273,12 +453,73 @@
             });
         });
 
-        // Enter key for custom command
-        customCommand.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                sendCustomCommand();
-            }
+        document.querySelectorAll('.preset-cmd').forEach(btn => {
+            btn.addEventListener('click', () => {
+                customCommand.value = btn.getAttribute('data-preset');
+            });
         });
+
+        customCommand.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendCustomCommand();
+        });
+
+        async function loadRouterPages() {
+            try {
+                const response = await fetch('/api/pages');
+                const manifest = await response.json();
+                routerPages = manifest.screens || [];
+                renderRouterButtons();
+            } catch (error) {
+                addLog(`⚠️ Could not load /api/pages: ${error.message}`);
+            }
+        }
+
+        function renderRouterButtons() {
+            const screenContainer = document.getElementById('routerScreenButtons');
+            const scopeContainer = document.getElementById('routerScopeButtons');
+            const legacyContainer = document.getElementById('routerLegacyButtons');
+            screenContainer.innerHTML = '';
+            scopeContainer.innerHTML = '';
+            legacyContainer.innerHTML = '';
+
+            routerPages.forEach(page => {
+                const icon = page.icon || SCOPE_ICONS[page.scope] || 'circle';
+
+                const screenBtn = document.createElement('button');
+                screenBtn.type = 'button';
+                screenBtn.className = 'btn btn-outline-primary btn-command';
+                screenBtn.innerHTML = `<i class="fas fa-${icon}"></i> ${page.title}`;
+                screenBtn.addEventListener('click', () => {
+                    sendCommand(rdcpScreenCmd(page.id));
+                });
+                screenContainer.appendChild(screenBtn);
+
+                const scopeBtn = document.createElement('button');
+                scopeBtn.type = 'button';
+                scopeBtn.className = 'btn btn-outline-success btn-command';
+                scopeBtn.innerHTML = `<i class="fas fa-${icon}"></i> ${page.scope}`;
+                scopeBtn.addEventListener('click', () => sendRdcpRes(page.scope));
+                scopeContainer.appendChild(scopeBtn);
+
+                const legacyBtn = document.createElement('button');
+                legacyBtn.type = 'button';
+                legacyBtn.className = 'btn btn-outline-secondary btn-sm btn-command';
+                legacyBtn.textContent = page.scope;
+                legacyBtn.addEventListener('click', () => {
+                    sendCommand({ request: page.scope === 'system' ? 'cpu' : page.scope });
+                });
+                legacyContainer.appendChild(legacyBtn);
+            });
+        }
+
+        function rdcpScreenCmd(screenId) {
+            return {
+                v: 1,
+                t: 'cmd',
+                op: 'screen',
+                data: { screen: screenId },
+            };
+        }
 
         async function connect() {
             const port = document.getElementById('port').value;
@@ -289,16 +530,15 @@
                 const response = await fetch('/api/connect', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ port, baudrate, format })
+                    body: JSON.stringify({ port, baudrate, format }),
                 });
-
                 const result = await response.json();
 
                 if (result.status === 'connected') {
                     connectBtn.disabled = true;
                     disconnectBtn.disabled = false;
                     startEventSources();
-                    addLog(`✅ Connected to ${result.port} at ${result.baudrate} baud`);
+                    addLog(`✅ Connected to ${result.port} at ${result.baudrate} baud (${result.format || format})`);
                 } else {
                     addLog(`❌ ${result.message}`);
                 }
@@ -311,9 +551,7 @@
 
         async function disconnect() {
             try {
-                const response = await fetch('/api/disconnect', { method: 'POST' });
-                const result = await response.json();
-
+                await fetch('/api/disconnect', { method: 'POST' });
                 connectBtn.disabled = false;
                 disconnectBtn.disabled = true;
                 stopEventSources();
@@ -330,9 +568,8 @@
                 const response = await fetch('/api/send_command', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ command })
+                    body: JSON.stringify({ command }),
                 });
-
                 const result = await response.json();
 
                 if (result.status === 'sent') {
@@ -345,36 +582,49 @@
             }
         }
 
+        async function sendRdcpRes(scope) {
+            const id = parseInt(document.getElementById('rdcpResId').value, 10) || 1;
+
+            try {
+                const response = await fetch('/api/send_rdcp_res', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ scope, id }),
+                });
+                const result = await response.json();
+
+                if (result.status === 'sent') {
+                    addLog(`📤 RDCP res scope=${scope} id=${id}`);
+                    updateMetricsPreview(scope, result.data);
+                } else {
+                    addLog(`❌ ${result.message}`);
+                }
+            } catch (error) {
+                addLog(`❌ RDCP res error: ${error.message}`);
+            }
+        }
+
         function sendCustomCommand() {
             const commandText = customCommand.value.trim();
             if (!commandText) return;
 
             try {
-                const command = JSON.parse(commandText);
-                sendCommand(command);
+                sendCommand(JSON.parse(commandText));
             } catch (error) {
                 addLog(`❌ Invalid JSON: ${error.message}`);
             }
         }
 
         function startEventSources() {
-            stopEventSources(); // Clean up any existing connections
+            stopEventSources();
 
             logEventSource = new EventSource('/api/logs');
-            logEventSource.onmessage = (event) => {
-                addLog(event.data);
-            };
-            logEventSource.onerror = () => {
-                addLog('❌ Log stream error');
-            };
+            logEventSource.onmessage = (event) => addLog(event.data);
+            logEventSource.onerror = () => addLog('❌ Log stream error');
 
             responseEventSource = new EventSource('/api/responses');
-            responseEventSource.onmessage = (event) => {
-                addResponse(event.data);
-            };
-            responseEventSource.onerror = () => {
-                addLog('❌ Response stream error');
-            };
+            responseEventSource.onmessage = (event) => addMcuMessage(event.data);
+            responseEventSource.onerror = () => addLog('❌ Response stream error');
         }
 
         function stopEventSources() {
@@ -389,25 +639,134 @@
         }
 
         function addLog(message) {
+            if (logContainer.querySelector('.text-muted')) {
+                logContainer.innerHTML = '';
+            }
             const logEntry = document.createElement('div');
             logEntry.textContent = message;
             logContainer.appendChild(logEntry);
             logContainer.scrollTop = logContainer.scrollHeight;
         }
 
-        function addResponse(data) {
+        function messageBadge(obj) {
+            if (obj.v === 1) {
+                if (obj.t === 'req') return '<span class="badge badge-rdcp-req">RDCP req</span>';
+                if (obj.t === 'evt') return '<span class="badge badge-rdcp-evt">RDCP evt</span>';
+                if (obj.t === 'res') return '<span class="badge badge-rdcp-res">RDCP res</span>';
+            }
+            if (obj.request || obj.screen) return '<span class="badge badge-legacy">legacy</span>';
+            return '<span class="badge bg-secondary">json</span>';
+        }
+
+        function handleIncomingMessage(obj) {
+            if (obj.v === 1 && obj.t === 'evt' && obj.op === 'screen') {
+                const screen = obj.data?.screen || '?';
+                activeScreenName.textContent = screen;
+            }
+
+            if (obj.v === 1 && obj.t === 'req' && obj.op === 'metrics') {
+                const scope = obj.scope || 'system';
+                addLog(`↪ MCU requested metrics scope=${scope} (id=${obj.id}) — host auto-replies on serial`);
+            }
+
+            if (obj.screen) {
+                activeScreenName.textContent = obj.screen;
+            }
+        }
+
+        function addMcuMessage(data) {
             try {
-                const response = JSON.parse(data);
-                const responseEntry = document.createElement('div');
-                responseEntry.innerHTML = `<pre>${JSON.stringify(response, null, 2)}</pre>`;
-                responseContainer.appendChild(responseEntry);
+                const obj = JSON.parse(data);
+                if (responseContainer.querySelector('.text-muted')) {
+                    responseContainer.innerHTML = '';
+                }
+
+                handleIncomingMessage(obj);
+
+                const entry = document.createElement('div');
+                entry.className = 'msg-entry';
+                entry.innerHTML = `
+                    <div class="mb-1">${messageBadge(obj)} <small class="text-muted">${new Date().toLocaleTimeString()}</small></div>
+                    <pre>${JSON.stringify(obj, null, 2)}</pre>
+                `;
+                responseContainer.appendChild(entry);
                 responseContainer.scrollTop = responseContainer.scrollHeight;
             } catch (error) {
-                const responseEntry = document.createElement('div');
-                responseEntry.textContent = data;
-                responseContainer.appendChild(responseEntry);
-                responseContainer.scrollTop = responseContainer.scrollHeight;
+                const entry = document.createElement('div');
+                entry.className = 'msg-entry';
+                entry.textContent = data;
+                responseContainer.appendChild(entry);
             }
+        }
+
+        function metricItem(label, value) {
+            return `
+                <div class="col-md-4 col-sm-6">
+                    <div class="card metric-card">
+                        <div class="card-body py-2 px-3">
+                            <div class="metric-label">${label}</div>
+                            <div class="metric-value">${value ?? '—'}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function updateMetricsPreview(scope, data) {
+            if (!data) return;
+            lastMetrics = data;
+            lastMetricsScope = scope;
+            metricsScopeLabel.textContent = `scope: ${scope}`;
+
+            const rows = [];
+            const add = (k, label) => {
+                if (data[k] !== undefined && data[k] !== null) {
+                    rows.push(metricItem(label, typeof data[k] === 'object' ? JSON.stringify(data[k]) : data[k]));
+                }
+            };
+
+            if (scope === 'system') {
+                add('hostname', 'Hostname');
+                add('uptime_short', 'Uptime');
+                add('cpu', 'CPU %');
+                add('cpu_temp', 'CPU temp');
+                add('ram_pct', 'RAM %');
+                add('ram_used', 'RAM used');
+                add('load_short', 'Load');
+            } else if (scope === 'network') {
+                add('wan_ip', 'WAN IP');
+                add('rx_rate', 'RX rate');
+                add('tx_rate', 'TX rate');
+                add('ping_ms', 'Ping ms');
+                add('link_ok', 'Link OK');
+            } else if (scope === 'clients') {
+                add('wifi_24', 'WiFi 2.4G');
+                add('wifi_5', 'WiFi 5G');
+                add('lan_clients', 'LAN clients');
+                add('clients_total', 'Total');
+                add('dhcp_leases', 'DHCP leases');
+                add('dhcp_pct', 'DHCP %');
+            } else if (scope === 'storage') {
+                add('root_usage', 'Root usage');
+                add('root_pct', 'Root %');
+                add('data_usage', 'Data usage');
+                add('data_pct', 'Data %');
+                add('swap_usage', 'Swap');
+            } else if (scope === 'wifi') {
+                add('wifi_ssid', 'SSID');
+                add('wifi_ap_state', 'AP state');
+                add('wifi_qr', 'QR payload');
+            } else if (scope === 'security') {
+                add('firewall_state', 'Firewall');
+                add('blocked_24h', 'Blocked 24h');
+                add('vpn_tunnels', 'VPN tunnels');
+            } else {
+                Object.keys(data).forEach(k => add(k, k));
+            }
+
+            metricsPreview.innerHTML = rows.length
+                ? rows.join('')
+                : '<div class="col-12 text-muted">No scalar fields in payload.</div>';
         }
 
         async function updateConnectionStatus() {
@@ -423,19 +782,18 @@
                         startEventSources();
                     }
                 } else {
-                    connectionStatus.innerHTML = `<i class="fas fa-circle status-disconnected"></i> Disconnected`;
+                    connectionStatus.innerHTML = '<i class="fas fa-circle status-disconnected"></i> Disconnected';
                     connectBtn.disabled = false;
                     disconnectBtn.disabled = true;
                     stopEventSources();
                 }
             } catch (error) {
-                connectionStatus.innerHTML = `<i class="fas fa-circle status-disconnected"></i> Error`;
+                connectionStatus.innerHTML = '<i class="fas fa-circle status-disconnected"></i> Error';
                 connectBtn.disabled = false;
                 disconnectBtn.disabled = true;
             }
         }
 
-        // Auto-refresh status every 5 seconds
         setInterval(updateConnectionStatus, 5000);
     </script>
 </body>

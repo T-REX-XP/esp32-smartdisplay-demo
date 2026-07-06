@@ -37,20 +37,25 @@ static void on_gesture(lv_event_t *e)
 {
 	lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_active());
 	router_page_t page = router_ui_current_page(g_ui);
-	router_page_t next = page;
+	router_page_t next;
 
 	if (lv_event_get_code(e) != LV_EVENT_GESTURE)
 		return;
 	lv_indev_wait_release(lv_indev_active());
 
-	if (dir == LV_DIR_LEFT)
-		next = (router_page_t)((page + 1) % ROUTER_PAGE_COUNT);
-	else if (dir == LV_DIR_RIGHT)
-		next = (router_page_t)((page + ROUTER_PAGE_COUNT - 1) % ROUTER_PAGE_COUNT);
-	else
-		return;
+	lv_scr_load_anim_t anim;
 
-	router_ui_show_page(g_ui, next);
+	if (dir == LV_DIR_LEFT) {
+		next = (router_page_t)((page + 1) % ROUTER_PAGE_COUNT);
+		anim = LV_SCR_LOAD_ANIM_MOVE_LEFT;
+	} else if (dir == LV_DIR_RIGHT) {
+		next = (router_page_t)((page + ROUTER_PAGE_COUNT - 1) % ROUTER_PAGE_COUNT);
+		anim = LV_SCR_LOAD_ANIM_MOVE_RIGHT;
+	} else {
+		return;
+	}
+
+	router_ui_show_page(g_ui, next, anim);
 	emit_screen_event(next);
 	send_scope_request(router_page_scope(next));
 }

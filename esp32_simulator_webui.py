@@ -36,8 +36,9 @@ class ESP32WebSimulator:
         self.running = False
         self.log_queue = queue.Queue()
         self.response_queue = queue.Queue()
+        self.rdcp_req_id = 0
 
-        # Sample alarm data (same as simulator)
+        # Sample alarm data (demo gadget)
         self.alarms = [
             {"time": "08:00", "label": "Morning Coffee", "enabled": True},
             {"time": "12:30", "label": "Lunch Break", "enabled": True},
@@ -182,6 +183,119 @@ class ESP32WebSimulator:
         storage_info = self.get_storage_info()
         self.send_data({"storage": storage_info})
 
+    def build_scope_metrics(self, scope):
+        """Build router scope payload (mcudd-compatible dev data)."""
+        cpu_usage = self.get_real_cpu_usage()
+        mem = psutil.virtual_memory()
+        disk = psutil.disk_usage('/')
+
+        if scope == 'system':
+            return {
+                "hostname": "dev-host",
+                "uptime_short": "1h 00m",
+                "cpu": str(cpu_usage),
+                "cpu_temp": "42.0",
+                "ram_pct": int(mem.percent),
+                "ram_used": f"{mem.used // (1024 * 1024)}M",
+                "load_short": "0.25",
+            }
+        if scope == 'network':
+            return {
+                "wan_ip": "192.168.1.1",
+                "rx_rate": "12.4M",
+                "tx_rate": "1.2M",
+                "ping_ms": 14,
+                "link_ok": True,
+            }
+        if scope == 'clients':
+            return {
+                "wifi_24": "3",
+                "wifi_5": "2",
+                "lan_clients": "5",
+                "clients_total": "5",
+                "dhcp_leases": "5",
+                "dhcp_pct": 25,
+            }
+        if scope == 'storage':
+            storage = self.get_storage_info()
+            root_pct = int(disk.percent) if disk.total else 0
+            return {
+                "root_usage": f"{root_pct}%",
+                "root_pct": root_pct,
+                "data_usage": "--",
+                "data_pct": 0,
+                "swap_usage": "0",
+                "storage": storage or [{
+                    "mountpoint": "/",
+                    "used_percent": str(root_pct),
+                    "free_gb": f"{disk.free / (1024**3):.2f}",
+                }],
+            }
+        if scope == 'wifi':
+            return {
+                "wifi_ssid": "OpenWrt-Demo",
+                "wifi_ap_state": "up",
+                "wifi_qr": "WIFI:T:WPA;S:OpenWrt-Demo;P:demo-pass;;",
+            }
+        if scope == 'security':
+            return {
+                "firewall_state": "on",
+                "blocked_24h": "0",
+                "vpn_tunnels": "0",
+            }
+        if scope == 'alarms':
+            return {"alarms": self.alarms}
+        return {"error": "unknown_scope"}
+
+    def send_rdcp_res(self, req_id, data):
+        """RDCP response (host → MCU), always JSON on the wire."""
+        frame = {"v": 1, "t": "res", "id": req_id, "data": data}
+        self.send_json(frame)
+
+    def handle_rdcp_request(self, command):
+        """MCU → host RDCP req (metrics, etc.)."""
+        req_id = command.get("id", 0)
+        op = command.get("op")
+
+        if op == "metrics":
+            scope = command.get("scope", "system")
+            self.log(f"📊 RDCP metrics request scope={scope} id={req_id}")
+            data = self.build_scope_metrics(scope)
+            if req_id:
+                self.send_rdcp_res(req_id, data)
+            else:
+                self.send_data(data)
+            return
+
+        self.log(f"⚠️ Unknown RDCP op: {op}")
+
+    def handle_legacy_request(self, request_type):
+        """Legacy {\"request\":\"cpu\"} shim."""
+        scope_map = {
+            "cpu": "system",
+            "system": "system",
+            "storage": "storage",
+            "alarms": "alarms",
+            "network": "network",
+            "clients": "clients",
+            "wifi": "wifi",
+            "security": "security",
+        }
+        scope = scope_map.get(request_type)
+        if not scope:
+            self.log(f"⚠️ Unknown request: {request_type}")
+            return
+        if scope == "alarms":
+            self.handle_alarm_request()
+            return
+        data = self.build_scope_metrics(scope)
+        if request_type == "cpu":
+            self.send_data(data)
+        elif request_type == "storage":
+            self.send_data(data)
+        else:
+            self.send_data(data)
+
     def handle_screen_change(self, screen_name):
         """Handle screen change"""
         self.log(f"📱 Screen changed to: {screen_name}")
@@ -191,24 +305,26 @@ class ESP32WebSimulator:
             self.handle_alarm_request()
 
     def process_command(self, command_str):
-        """Process incoming command"""
+        """Process incoming JSON line from MCU (req, evt, legacy)."""
         try:
             command = json.loads(command_str.strip())
             self.log(f"📥 Received: {command}")
-
-            # Store response for web UI
             self.response_queue.put(command)
+
+            if command.get("v") == 1:
+                t = command.get("t")
+                if t == "req":
+                    self.handle_rdcp_request(command)
+                    return
+                if t == "evt" and command.get("op") == "screen":
+                    screen = command.get("data", {}).get("screen", "?")
+                    self.log(f"📱 MCU screen event: {screen}")
+                    return
 
             if "screen" in command:
                 self.handle_screen_change(command["screen"])
             elif "request" in command:
-                request_type = command["request"]
-                if request_type == "alarms":
-                    self.handle_alarm_request()
-                elif request_type == "cpu":
-                    self.handle_cpu_request()
-                elif request_type == "storage":
-                    self.handle_storage_request()
+                self.handle_legacy_request(command["request"])
             elif "alarms" in command:
                 self.log("📝 Alarm list updated")
 
@@ -352,6 +468,35 @@ def responses():
                 continue
 
     return Response(generate(), mimetype='text/event-stream')
+
+@app.route('/api/pages')
+def pages():
+    """Router screen manifest (matches mcud/pages.json)."""
+    return jsonify({
+        "version": 1,
+        "screens": [
+            {"id": "router_system", "title": "SYSTEM", "scope": "system", "icon": "microchip"},
+            {"id": "router_network", "title": "NETWORK", "scope": "network", "icon": "network-wired"},
+            {"id": "router_clients", "title": "CLIENTS", "scope": "clients", "icon": "users"},
+            {"id": "router_storage", "title": "STORAGE", "scope": "storage", "icon": "hdd"},
+            {"id": "router_wifi", "title": "WIFI AP", "scope": "wifi", "icon": "wifi"},
+            {"id": "router_security", "title": "SECURITY", "scope": "security", "icon": "shield-halved"},
+        ],
+    })
+
+@app.route('/api/send_rdcp_res', methods=['POST'])
+def send_rdcp_res():
+    """Push RDCP res frame to MCU (host → device, for UI testing)."""
+    global simulator
+    if not simulator or not simulator.serial_conn or not simulator.serial_conn.is_open:
+        return jsonify({'status': 'error', 'message': 'Not connected'})
+
+    data = request.get_json() or {}
+    scope = data.get('scope', 'system')
+    req_id = int(data.get('id', 1))
+    payload = simulator.build_scope_metrics(scope)
+    simulator.send_rdcp_res(req_id, payload)
+    return jsonify({'status': 'sent', 'scope': scope, 'id': req_id, 'data': payload})
 
 @app.route('/api/status')
 def status():

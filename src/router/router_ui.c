@@ -52,9 +52,7 @@ struct router_ui {
 	lv_obj_t *sec_vpn_lbl;
 };
 
-LV_IMG_DECLARE(ui_img_pattern_png);
-
-#define COL_TEXT lv_color_hex(0x000746)
+static lv_obj_t *make_screen_bg(void)
 {
 	lv_obj_t *scr = lv_obj_create(NULL);
 
@@ -82,14 +80,14 @@ static lv_obj_t *add_header(lv_obj_t *parent, const char *title, const char *rig
 	lv_obj_t *t = lv_label_create(bar);
 	lv_label_set_text(t, title);
 	lv_obj_set_style_text_color(t, COL_WHITE, LV_PART_MAIN);
-	lv_obj_set_style_text_font(t, &lv_font_montserrat_16, LV_PART_MAIN);
+	lv_obj_set_style_text_font(t, &lv_font_montserrat_18, LV_PART_MAIN);
 	lv_obj_align(t, LV_ALIGN_LEFT_MID, 4, 0);
 
 	if (right && right[0]) {
 		lv_obj_t *r = lv_label_create(bar);
 		lv_label_set_text(r, right);
 		lv_obj_set_style_text_color(r, COL_WHITE, LV_PART_MAIN);
-		lv_obj_set_style_text_font(r, &lv_font_montserrat_12, LV_PART_MAIN);
+		lv_obj_set_style_text_font(r, &lv_font_montserrat_14, LV_PART_MAIN);
 		lv_obj_align(r, LV_ALIGN_RIGHT_MID, -4, 0);
 	}
 	return bar;
@@ -122,7 +120,7 @@ static lv_obj_t *add_metric_card(lv_obj_t *parent, const char *title, int y)
 	lv_obj_t *t = lv_label_create(card);
 	lv_label_set_text(t, title);
 	lv_obj_set_style_text_color(t, COL_MUTED, LV_PART_MAIN);
-	lv_obj_set_style_text_font(t, &lv_font_montserrat_12, LV_PART_MAIN);
+	lv_obj_set_style_text_font(t, &lv_font_montserrat_14, LV_PART_MAIN);
 	lv_obj_align(t, LV_ALIGN_TOP_LEFT, 0, 0);
 	return card;
 }
@@ -161,8 +159,8 @@ static void build_system(router_ui_t *ui, lv_obj_t *scr)
 
 	ui->sys_host_lbl = add_body_label(scr, "Router", LV_ALIGN_BOTTOM_LEFT, 12, -36);
 	ui->sys_uptime_lbl = add_body_label(scr, "up --", LV_ALIGN_BOTTOM_RIGHT, -12, -36);
-	lv_obj_set_style_text_font(ui->sys_host_lbl, &lv_font_montserrat_12, LV_PART_MAIN);
-	lv_obj_set_style_text_font(ui->sys_uptime_lbl, &lv_font_montserrat_12, LV_PART_MAIN);
+	lv_obj_set_style_text_font(ui->sys_host_lbl, &lv_font_montserrat_14, LV_PART_MAIN);
+	lv_obj_set_style_text_font(ui->sys_uptime_lbl, &lv_font_montserrat_14, LV_PART_MAIN);
 }
 
 static void build_network(router_ui_t *ui, lv_obj_t *scr)
@@ -178,8 +176,8 @@ static void build_network(router_ui_t *ui, lv_obj_t *scr)
 	ui->net_rx_lbl = add_body_label(scr, "RX --", LV_ALIGN_LEFT_MID, 16, 20);
 	ui->net_tx_lbl = add_body_label(scr, "TX --", LV_ALIGN_LEFT_MID, 16, 50);
 	ui->net_ping_lbl = add_body_label(scr, "PING -- ms", LV_ALIGN_RIGHT_MID, -16, 20);
-	lv_obj_set_style_text_font(ui->net_rx_lbl, &lv_font_montserrat_16, LV_PART_MAIN);
-	lv_obj_set_style_text_font(ui->net_tx_lbl, &lv_font_montserrat_16, LV_PART_MAIN);
+	lv_obj_set_style_text_font(ui->net_rx_lbl, &lv_font_montserrat_18, LV_PART_MAIN);
+	lv_obj_set_style_text_font(ui->net_tx_lbl, &lv_font_montserrat_18, LV_PART_MAIN);
 }
 
 static void build_clients(router_ui_t *ui, lv_obj_t *scr)
@@ -189,14 +187,14 @@ static void build_clients(router_ui_t *ui, lv_obj_t *scr)
 	c = add_metric_card(scr, "2.4 GHz", 52);
 	ui->cli_24_lbl = lv_label_create(c);
 	lv_label_set_text(ui->cli_24_lbl, "0");
-	lv_obj_set_style_text_font(ui->cli_24_lbl, &lv_font_montserrat_24, LV_PART_MAIN);
+	lv_obj_set_style_text_font(ui->cli_24_lbl, &lv_font_montserrat_20, LV_PART_MAIN);
 	lv_obj_set_style_text_color(ui->cli_24_lbl, COL_ACCENT, LV_PART_MAIN);
 	lv_obj_align(ui->cli_24_lbl, LV_ALIGN_CENTER, 0, 8);
 
 	c = add_metric_card(scr, "5 GHz", 118);
 	ui->cli_5_lbl = lv_label_create(c);
 	lv_label_set_text(ui->cli_5_lbl, "0");
-	lv_obj_set_style_text_font(ui->cli_5_lbl, &lv_font_montserrat_24, LV_PART_MAIN);
+	lv_obj_set_style_text_font(ui->cli_5_lbl, &lv_font_montserrat_20, LV_PART_MAIN);
 	lv_obj_set_style_text_color(ui->cli_5_lbl, COL_ACCENT, LV_PART_MAIN);
 	lv_obj_align(ui->cli_5_lbl, LV_ALIGN_CENTER, 0, 8);
 
@@ -248,7 +246,8 @@ static void build_wifi(router_ui_t *ui, lv_obj_t *scr)
 	ui->wifi_state_lbl = add_body_label(scr, "AP --", LV_ALIGN_TOP_LEFT, 14, 78);
 	lv_obj_set_style_text_color(ui->wifi_state_lbl, COL_MUTED, LV_PART_MAIN);
 
-	ui->wifi_qr = lv_qrcode_create(scr, 120);
+	ui->wifi_qr = lv_qrcode_create(scr);
+	lv_qrcode_set_size(ui->wifi_qr, 120);
 	lv_obj_align(ui->wifi_qr, LV_ALIGN_RIGHT_MID, -10, 20);
 	lv_qrcode_set_dark_color(ui->wifi_qr, COL_TEXT);
 	lv_qrcode_set_light_color(ui->wifi_qr, COL_WHITE);
@@ -335,12 +334,12 @@ void router_ui_destroy(router_ui_t *ui)
 	free(ui);
 }
 
-void router_ui_show_page(router_ui_t *ui, router_page_t page)
+void router_ui_show_page(router_ui_t *ui, router_page_t page, lv_scr_load_anim_t anim)
 {
 	if (!ui || page < 0 || page >= ROUTER_PAGE_COUNT)
 		return;
 	ui->current = page;
-	lv_screen_load_anim(ui->screens[page], LV_SCR_LOAD_ANIM_MOVE_LEFT, 200, 0, false);
+	lv_screen_load_anim(ui->screens[page], anim, 200, 0, false);
 }
 
 router_page_t router_ui_current_page(const router_ui_t *ui)
