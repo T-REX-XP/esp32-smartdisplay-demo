@@ -44,11 +44,17 @@ static const char *json_str(const char *json, const char *key, char *buf, size_t
 
 static unsigned json_uint(const char *json, const char *key)
 {
-	char tmp[24];
+	char pattern[40];
+	const char *p;
 
-	if (!json_str(json, key, tmp, sizeof(tmp)))
+	snprintf(pattern, sizeof(pattern), "\"%s\"", key);
+	p = strstr(json, pattern);
+	if (!p)
 		return 0;
-	return (unsigned)strtoul(tmp, NULL, 10);
+	p = strchr(p + strlen(pattern), ':');
+	if (!p)
+		return 0;
+	return (unsigned)strtoul(p + 1, NULL, 10);
 }
 
 void router_data_init(router_metrics_t *m)
