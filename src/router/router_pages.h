@@ -5,6 +5,8 @@
 #ifndef ROUTER_PAGES_H
 #define ROUTER_PAGES_H
 
+#include <stdbool.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

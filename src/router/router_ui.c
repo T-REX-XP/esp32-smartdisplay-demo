@@ -429,7 +429,7 @@ static int cpu_value(const char *cpu)
 
 void router_ui_refresh(router_ui_t *ui, const router_metrics_t *m)
 {
-	char buf[64];
+	char buf[ROUTER_STR_LEN * 2 + 16];
 	int cpu;
 
 	if (!ui || !m)
