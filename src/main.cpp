@@ -5,8 +5,12 @@
 #include "freertos/task.h"
 
 #include <esp32_smartdisplay.h>
-#include <ui/ui.h>
 #include <vector>
+
+#ifdef ROUTER_UI
+#include "router/router_app.h"
+#else
+#include <ui/ui.h>
 
 // Alarm structure
 struct Alarm {
@@ -17,6 +21,9 @@ struct Alarm {
 
 // Global alarms list
 std::vector<Alarm> alarms;
+#endif
+
+#ifndef ROUTER_UI
 
 // Define button pins for navigation (using available GPIOs)
 // Note: GPIO34 and GPIO35 are input-only and don't have pull-ups
@@ -412,6 +419,8 @@ void sendPoweroff() {
     ESP.deepSleep(0);
 }
 
+#endif /* !ROUTER_UI */
+
 extern "C" void action_on_rotate(lv_event_t *e)
 {
     auto disp = lv_disp_get_default();
@@ -459,22 +468,21 @@ void setup()
     log_i("Free PSRAM: %d bytes", ESP.getPsramSize());
     log_i("SDK version: %s", ESP.getSdkVersion());
 
-    // Initialize button pins
+#ifndef ROUTER_UI
     pinMode(BTN_UP, INPUT_PULLUP);
-    // BTN_DOWN and BTN_SELECT use same pin as BTN_UP for now
-
-    // Wait a bit to avoid false button reads on startup
     delay(100);
+#endif
 
     smartdisplay_init();
 
     __attribute__((unused)) auto disp = lv_disp_get_default();
-    // lv_disp_set_rotation(disp, LV_DISP_ROT_90);
-    // lv_disp_set_rotation(disp, LV_DISP_ROT_180);
-    // lv_disp_set_rotation(disp, LV_DISP_ROT_270);
 
-    // Initialize the new UI
+#ifdef ROUTER_UI
+    log_i("Router UI mode");
+    router_app_init();
+#else
     ui_init();
+#endif
 }
 
 ulong next_millis;
@@ -483,7 +491,15 @@ auto lv_last_tick = millis();
 void loop()
 {
     auto const now = millis();
-    
+
+#ifdef ROUTER_UI
+    while (Serial.available()) {
+        String line = Serial.readStringUntil('\n');
+        if (line.length() > 0)
+            router_app_on_serial_line(line.c_str());
+    }
+    router_app_loop();
+#else
     // Handle serial communication
     handleSerial();
     
@@ -506,14 +522,12 @@ void loop()
         // Detect button press (transition from not pressed to pressed)
         if(btnPressed && !lastBtnState) {
             btnPressStart = now;
-            // Short press - navigate
             if(menuIndex == 3) {
                 // On power menu, require long press
             } else {
                 // navigateNextPage();
             }
         }
-        // Detect long press (held for 2 seconds)
         else if(btnPressed && lastBtnState && (now - btnPressStart > 2000)) {
             if(menuIndex == 3) {
                 // sendPoweroff();
@@ -523,12 +537,11 @@ void loop()
         lastBtnState = btnPressed;
     }
     
-    // Update display periodically
     static unsigned long lastRender = 0; 
     if(now - lastRender > 250) { 
         lastRender = now; 
-        // render(); 
     }
+#endif
 
 #ifdef BOARD_HAS_RGB_LED
     if (now > next_millis) {

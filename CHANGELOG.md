@@ -1,5 +1,18 @@
 # ESP32 Smart Display Demo — Changelog
 
+## 2026-07-06 (router UI)
+
+### Added
+
+- **Router LVGL screens** — six pages matching `pages.json`: system, network, clients, storage, WiFi (QR), security.
+- **`src/router/`** — `router_ui.c`, `router_data.c`, `router_app.cpp`, RDCP scope requests + screen events.
+- **PlatformIO env** — `esp32-2432S022C-router` (`ROUTER_UI=1`, demo EEZ screens excluded).
+- **Host test** — `tests/test_router_data.c` JSON/RDCP payload parser.
+
+### Changed
+
+- Swipe left/right navigates router pages; each page polls its scope from `mcudd`.
+
 ## 2026-07-06
 
 ### Added
