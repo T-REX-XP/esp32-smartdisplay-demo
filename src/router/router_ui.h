@@ -26,6 +26,7 @@ router_page_t router_ui_current_page(const router_ui_t *ui);
 void router_ui_refresh(router_ui_t *ui, const router_metrics_t *metrics);
 lv_obj_t *router_ui_screen(const router_ui_t *ui, router_page_t page);
 lv_obj_t *router_ui_boot_screen(router_ui_t *ui);
+void router_ui_install_swipe(lv_obj_t *scr, lv_event_cb_t cb);
 
 #ifdef __cplusplus
 }

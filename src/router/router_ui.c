@@ -7,6 +7,7 @@
 #include "libs/qrcode/lv_qrcode.h"
 
 LV_IMG_DECLARE(ui_img_pattern_png);
+LV_IMG_DECLARE(ui_img_sls_logo_png);
 
 #define COL_TEXT lv_color_hex(0x000746)
 #define COL_MUTED lv_color_hex(0x9C9CD9)
@@ -18,6 +19,8 @@ LV_IMG_DECLARE(ui_img_pattern_png);
 
 struct router_ui {
 	lv_obj_t *boot_scr;
+	lv_obj_t *boot_logo;
+	lv_obj_t *boot_title_lbl;
 	lv_obj_t *boot_msg_lbl;
 	lv_obj_t *boot_bar;
 	bool on_boot;
@@ -281,23 +284,62 @@ static void build_security(router_ui_t *ui, lv_obj_t *scr)
 
 static void build_boot(router_ui_t *ui)
 {
-	lv_obj_t *scr = make_screen_bg();
+	lv_obj_t *scr = lv_obj_create(NULL);
 
-	add_header(scr, "BOOTING", NULL);
-	ui->boot_msg_lbl = add_body_label(scr, "Waiting for router...", LV_ALIGN_CENTER, 0, -20);
-	lv_obj_set_style_text_font(ui->boot_msg_lbl, &lv_font_montserrat_18, LV_PART_MAIN);
+	lv_obj_remove_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
+	lv_obj_set_style_bg_color(scr, COL_WHITE, LV_PART_MAIN);
+	lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, LV_PART_MAIN);
+	lv_obj_set_style_bg_image_src(scr, &ui_img_pattern_png, LV_PART_MAIN);
+	lv_obj_set_style_bg_image_tiled(scr, true, LV_PART_MAIN);
+	lv_obj_set_style_bg_image_opa(scr, LV_OPA_40, LV_PART_MAIN);
+
+	ui->boot_logo = lv_image_create(scr);
+	lv_image_set_src(ui->boot_logo, &ui_img_sls_logo_png);
+	lv_obj_align(ui->boot_logo, LV_ALIGN_CENTER, 0, -48);
+
+	ui->boot_title_lbl = lv_label_create(scr);
+	lv_label_set_text(ui->boot_title_lbl, "Router Display");
+	lv_obj_set_style_text_font(ui->boot_title_lbl, &lv_font_montserrat_20, LV_PART_MAIN);
+	lv_obj_set_style_text_color(ui->boot_title_lbl, COL_TEXT, LV_PART_MAIN);
+	lv_obj_align(ui->boot_title_lbl, LV_ALIGN_CENTER, 0, 36);
+
+	ui->boot_msg_lbl = lv_label_create(scr);
+	lv_label_set_text(ui->boot_msg_lbl, "Waiting for router...");
+	lv_obj_set_style_text_font(ui->boot_msg_lbl, &lv_font_montserrat_14, LV_PART_MAIN);
+	lv_obj_set_style_text_color(ui->boot_msg_lbl, COL_MUTED, LV_PART_MAIN);
+	lv_obj_align(ui->boot_msg_lbl, LV_ALIGN_CENTER, 0, 64);
 	lv_label_set_long_mode(ui->boot_msg_lbl, LV_LABEL_LONG_WRAP);
+	lv_obj_set_style_text_align(ui->boot_msg_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
 	lv_obj_set_width(ui->boot_msg_lbl, lv_pct(88));
 
 	ui->boot_bar = lv_bar_create(scr);
 	lv_obj_set_size(ui->boot_bar, lv_pct(80), 12);
-	lv_obj_align(ui->boot_bar, LV_ALIGN_CENTER, 0, 24);
+	lv_obj_align(ui->boot_bar, LV_ALIGN_BOTTOM_MID, 0, -24);
 	lv_bar_set_range(ui->boot_bar, 0, 100);
 	lv_bar_set_value(ui->boot_bar, 0, LV_ANIM_OFF);
-	lv_obj_set_style_bg_color(ui->boot_bar, COL_MUTED, LV_PART_MAIN);
+	lv_obj_set_style_bg_color(ui->boot_bar, COL_PANEL, LV_PART_MAIN);
 	lv_obj_set_style_bg_color(ui->boot_bar, COL_ACCENT, LV_PART_INDICATOR);
 
 	ui->boot_scr = scr;
+}
+
+void router_ui_install_swipe(lv_obj_t *scr, lv_event_cb_t cb)
+{
+	lv_obj_t *layer;
+
+	if (!scr || !cb)
+		return;
+
+	layer = lv_obj_create(scr);
+	lv_obj_set_size(layer, lv_pct(100), lv_pct(100));
+	lv_obj_align(layer, LV_ALIGN_TOP_LEFT, 0, 0);
+	lv_obj_remove_flag(layer, LV_OBJ_FLAG_SCROLLABLE);
+	lv_obj_add_flag(layer, LV_OBJ_FLAG_CLICKABLE);
+	lv_obj_set_style_bg_opa(layer, LV_OPA_TRANSP, LV_PART_MAIN);
+	lv_obj_set_style_border_width(layer, 0, LV_PART_MAIN);
+	lv_obj_add_event_cb(layer, cb, LV_EVENT_PRESSED, NULL);
+	lv_obj_add_event_cb(layer, cb, LV_EVENT_RELEASED, NULL);
+	lv_obj_move_foreground(layer);
 }
 
 static void build_page(router_ui_t *ui, router_page_t page)
