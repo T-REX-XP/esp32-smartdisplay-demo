@@ -28,7 +28,7 @@ from flask import Flask, render_template, request, jsonify, Response
 import msgpack
 
 class ESP32WebSimulator:
-    def __init__(self, port='COM7', baudrate=115200, format='msgpack'):
+    def __init__(self, port='COM7', baudrate=115200, format='json'):
         self.port = port
         self.baudrate = baudrate
         self.format = format
@@ -274,8 +274,8 @@ def connect():
     data = request.get_json()
 
     port = data.get('port', 'COM3')
-    baudrate = data.get('baudrate', 115200)
-    format_type = data.get('format', 'msgpack')
+    baudrate = int(data.get('baudrate', 115200))
+    format_type = data.get('format', 'json')
 
     if simulator:
         simulator.disconnect()
@@ -319,17 +319,18 @@ def send_command():
 def logs():
     """Server-sent events for logs"""
     def generate():
-        global simulator
-        if simulator:
-            while True:
-                try:
-                    log_message = simulator.log_queue.get(timeout=1)
-                    yield f"data: {log_message}\n\n"
-                except queue.Empty:
-                    continue
-        else:
-            yield "data: No simulator connected\n\n"
-            time.sleep(1)
+        while True:
+            sim = simulator
+            if not sim:
+                yield "data: No simulator connected\n\n"
+                time.sleep(1)
+                continue
+
+            try:
+                log_message = sim.log_queue.get(timeout=1)
+                yield f"data: {log_message}\n\n"
+            except queue.Empty:
+                continue
 
     return Response(generate(), mimetype='text/event-stream')
 
@@ -337,17 +338,18 @@ def logs():
 def responses():
     """Server-sent events for responses"""
     def generate():
-        global simulator
-        if simulator:
-            while True:
-                try:
-                    response = simulator.response_queue.get(timeout=1)
-                    yield f"data: {json.dumps(response)}\n\n"
-                except queue.Empty:
-                    continue
-        else:
-            yield "data: No simulator connected\n\n"
-            time.sleep(1)
+        while True:
+            sim = simulator
+            if not sim:
+                yield "data: No simulator connected\n\n"
+                time.sleep(1)
+                continue
+
+            try:
+                response = sim.response_queue.get(timeout=1)
+                yield f"data: {json.dumps(response)}\n\n"
+            except queue.Empty:
+                continue
 
     return Response(generate(), mimetype='text/event-stream')
 
@@ -371,14 +373,18 @@ def main():
     parser = argparse.ArgumentParser(description="ESP32 Simulator Web UI")
     parser.add_argument('port', nargs='?', default='COM3', help='Serial port (default: COM3)')
     parser.add_argument('baudrate', nargs='?', type=int, default=115200, help='Baud rate (default: 115200)')
-    parser.add_argument('--format', choices=['json', 'msgpack'], default='msgpack',
-                       help='Data format (default: msgpack)')
+    parser.add_argument('--format', choices=['json', 'msgpack'], default='json',
+                       help='Data format (default: json)')
     parser.add_argument('--web-port', type=int, default=5000, help='Web server port (default: 5000)')
 
     args = parser.parse_args()
 
-    # Initialize simulator
+    # Initialize simulator and auto-connect in hardware mode.
     simulator = ESP32WebSimulator(args.port, args.baudrate, args.format)
+    if simulator.connect():
+        simulator.start_listening()
+    else:
+        print(f"⚠️  Could not connect to {args.port}. Use the web UI Connect button to retry.")
 
     print("🚀 ESP32 Simulator Web UI")
     print("=" * 40)

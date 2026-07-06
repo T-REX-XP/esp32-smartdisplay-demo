@@ -106,8 +106,8 @@
                             <div class="col-md-3">
                                 <label for="format" class="form-label">Data Format</label>
                                 <select class="form-select" id="format">
-                                    <option value="msgpack" selected>MessagePack</option>
-                                    <option value="json">JSON</option>
+                                    <option value="json" selected>JSON</option>
+                                    <option value="msgpack">MessagePack</option>
                                 </select>
                             </div>
                             <div class="col-md-3 d-flex align-items-end">
@@ -134,27 +134,27 @@
                     <div class="card-body">
                         <div class="command-group">
                             <p class="mb-2">Send screen change commands:</p>
-                            <button class="btn btn-outline-primary btn-command" data-command='{"screen": "Clock"}'>
+                            <button type="button" class="btn btn-outline-primary btn-command" data-command='{"screen": "Clock"}'>
                                 <i class="fas fa-clock"></i> Clock
                             </button>
-                            <button class="btn btn-outline-primary btn-command" data-command='{"screen": "Weather"}'>
+                            <button type="button" class="btn btn-outline-primary btn-command" data-command='{"screen": "Weather"}'>
                                 <i class="fas fa-cloud-sun"></i> Weather
                             </button>
-                            <button class="btn btn-outline-primary btn-command" data-command='{"screen": "Alarm"}'>
+                            <button type="button" class="btn btn-outline-primary btn-command" data-command='{"screen": "Alarm"}'>
                                 <i class="fas fa-bell"></i> Alarm
                             </button>
-                            <button class="btn btn-outline-primary btn-command" data-command='{"screen": "Chat"}'>
+                            <button type="button" class="btn btn-outline-primary btn-command" data-command='{"screen": "Chat"}'>
                                 <i class="fas fa-comments"></i> Chat
                             </button>
                         </div>
                         <div class="command-group">
-                            <button class="btn btn-outline-primary btn-command" data-command='{"screen": "Music"}'>
+                            <button type="button" class="btn btn-outline-primary btn-command" data-command='{"screen": "Music"}'>
                                 <i class="fas fa-music"></i> Music Player
                             </button>
-                            <button class="btn btn-outline-primary btn-command" data-command='{"screen": "Call"}'>
+                            <button type="button" class="btn btn-outline-primary btn-command" data-command='{"screen": "Call"}'>
                                 <i class="fas fa-phone"></i> Call
                             </button>
-                            <button class="btn btn-outline-primary btn-command" data-command='{"screen": "Splash"}'>
+                            <button type="button" class="btn btn-outline-primary btn-command" data-command='{"screen": "Splash"}'>
                                 <i class="fas fa-star"></i> Splash
                             </button>
                         </div>
@@ -170,13 +170,13 @@
                     <div class="card-body">
                         <div class="command-group">
                             <p class="mb-2">Request system data:</p>
-                            <button class="btn btn-outline-success btn-command" data-command='{"request": "alarms"}'>
+                            <button type="button" class="btn btn-outline-success btn-command" data-command='{"request": "alarms"}'>
                                 <i class="fas fa-bell"></i> Get Alarms
                             </button>
-                            <button class="btn btn-outline-success btn-command" data-command='{"request": "cpu"}'>
+                            <button type="button" class="btn btn-outline-success btn-command" data-command='{"request": "cpu"}'>
                                 <i class="fas fa-microchip"></i> Get CPU Metrics
                             </button>
-                            <button class="btn btn-outline-success btn-command" data-command='{"request": "storage"}'>
+                            <button type="button" class="btn btn-outline-success btn-command" data-command='{"request": "storage"}'>
                                 <i class="fas fa-hdd"></i> Get Storage Info
                             </button>
                         </div>
@@ -191,7 +191,7 @@
                     <div class="card-body">
                         <div class="input-group">
                             <input type="text" id="customCommand" class="form-control" placeholder='{"request": "cpu"}' value='{"request": "cpu"}'>
-                            <button class="btn btn-outline-secondary" id="sendCustomBtn">
+                            <button type="button" class="btn btn-outline-secondary" id="sendCustomBtn">
                                 <i class="fas fa-paper-plane"></i> Send
                             </button>
                         </div>
@@ -282,7 +282,7 @@
 
         async function connect() {
             const port = document.getElementById('port').value;
-            const baudrate = document.getElementById('baudrate').value;
+            const baudrate = parseInt(document.getElementById('baudrate').value, 10);
             const format = document.getElementById('format').value;
 
             try {
@@ -419,10 +419,14 @@
                     connectionStatus.innerHTML = `<i class="fas fa-circle status-connected"></i> Connected to ${status.port}`;
                     connectBtn.disabled = true;
                     disconnectBtn.disabled = false;
+                    if (!logEventSource || !responseEventSource) {
+                        startEventSources();
+                    }
                 } else {
                     connectionStatus.innerHTML = `<i class="fas fa-circle status-disconnected"></i> Disconnected`;
                     connectBtn.disabled = false;
                     disconnectBtn.disabled = true;
+                    stopEventSources();
                 }
             } catch (error) {
                 connectionStatus.innerHTML = `<i class="fas fa-circle status-disconnected"></i> Error`;
