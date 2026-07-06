@@ -89,6 +89,17 @@ class ESP32Simulator:
         except Exception as e:
             print(f"❌ Error sending JSON data: {e}")
 
+    def send_msgpack(self, data):
+        """Send MessagePack data to ESP32"""
+        try:
+            packed = msgpack.packb(data)
+            self.serial_conn.write(packed)
+            self.serial_conn.write(b'\n')
+            self.serial_conn.flush()
+            print(f"📦 Sent MessagePack: {data}")
+        except Exception as e:
+            print(f"❌ Error sending MessagePack: {e}")
+
     def send_data(self, data):
         """Send data using configured format (JSON or MessagePack)"""
         if self.format == 'msgpack':
