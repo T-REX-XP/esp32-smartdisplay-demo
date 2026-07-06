@@ -8,7 +8,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define ROUTER_BOOT_TIMEOUT_MS 10000
 #define ROUTER_SWIPE_MIN_PX 40
 
 static router_ui_t *g_ui;
@@ -16,7 +15,6 @@ static router_metrics_t g_metrics;
 static unsigned g_req_id;
 static unsigned long g_last_req_ms;
 static unsigned long g_last_rx_ms;
-static unsigned long g_boot_start_ms;
 static bool g_host_linked;
 static lv_point_t g_swipe_start;
 static bool g_swipe_active;
@@ -102,14 +100,6 @@ static void apply_local_nav(const char *dir)
 	}
 
 	show_router_page(next, anim);
-}
-
-static void leave_boot_default(void)
-{
-	router_ui_show_page(g_ui, ROUTER_PAGE_SYSTEM, LV_SCR_LOAD_ANIM_FADE_ON);
-	emit_screen_event(router_page_id(ROUTER_PAGE_SYSTEM));
-	if (g_host_linked)
-		send_scope_request(router_page_scope(ROUTER_PAGE_SYSTEM));
 }
 
 static void apply_host_screen(const char *screen_id, lv_scr_load_anim_t anim)
@@ -256,7 +246,6 @@ void router_app_init(void)
 {
 	router_data_init(&g_metrics);
 	g_ui = router_ui_create();
-	g_boot_start_ms = millis();
 	g_last_gesture_dir[0] = '\0';
 
 	attach_swipe(router_ui_boot_screen(g_ui));
@@ -307,9 +296,6 @@ void router_app_on_serial_line(const char *line)
 void router_app_loop(void)
 {
 	unsigned long now = millis();
-
-	if (router_ui_on_boot(g_ui) && (now - g_boot_start_ms) >= ROUTER_BOOT_TIMEOUT_MS)
-		leave_boot_default();
 
 	if (router_ui_on_boot(g_ui))
 		return;

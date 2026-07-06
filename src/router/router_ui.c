@@ -284,30 +284,25 @@ static void build_security(router_ui_t *ui, lv_obj_t *scr)
 
 static void build_boot(router_ui_t *ui)
 {
-	lv_obj_t *scr = lv_obj_create(NULL);
+	lv_obj_t *scr = make_screen_bg();
 
-	lv_obj_remove_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
-	lv_obj_set_style_bg_color(scr, COL_WHITE, LV_PART_MAIN);
-	lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, LV_PART_MAIN);
-	lv_obj_set_style_bg_image_src(scr, &ui_img_pattern_png, LV_PART_MAIN);
-	lv_obj_set_style_bg_image_tiled(scr, true, LV_PART_MAIN);
-	lv_obj_set_style_bg_image_opa(scr, LV_OPA_40, LV_PART_MAIN);
+	add_header(scr, "BOOTING", NULL);
 
 	ui->boot_logo = lv_image_create(scr);
 	lv_image_set_src(ui->boot_logo, &ui_img_sls_logo_png);
-	lv_obj_align(ui->boot_logo, LV_ALIGN_CENTER, 0, -48);
+	lv_obj_align(ui->boot_logo, LV_ALIGN_CENTER, 0, -36);
 
 	ui->boot_title_lbl = lv_label_create(scr);
 	lv_label_set_text(ui->boot_title_lbl, "Router Display");
 	lv_obj_set_style_text_font(ui->boot_title_lbl, &lv_font_montserrat_20, LV_PART_MAIN);
 	lv_obj_set_style_text_color(ui->boot_title_lbl, COL_TEXT, LV_PART_MAIN);
-	lv_obj_align(ui->boot_title_lbl, LV_ALIGN_CENTER, 0, 36);
+	lv_obj_align(ui->boot_title_lbl, LV_ALIGN_CENTER, 0, 48);
 
 	ui->boot_msg_lbl = lv_label_create(scr);
-	lv_label_set_text(ui->boot_msg_lbl, "Waiting for router...");
+	lv_label_set_text(ui->boot_msg_lbl, "Starting...");
 	lv_obj_set_style_text_font(ui->boot_msg_lbl, &lv_font_montserrat_14, LV_PART_MAIN);
 	lv_obj_set_style_text_color(ui->boot_msg_lbl, COL_MUTED, LV_PART_MAIN);
-	lv_obj_align(ui->boot_msg_lbl, LV_ALIGN_CENTER, 0, 64);
+	lv_obj_align(ui->boot_msg_lbl, LV_ALIGN_CENTER, 0, 76);
 	lv_label_set_long_mode(ui->boot_msg_lbl, LV_LABEL_LONG_WRAP);
 	lv_obj_set_style_text_align(ui->boot_msg_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
 	lv_obj_set_width(ui->boot_msg_lbl, lv_pct(88));
@@ -383,11 +378,12 @@ router_ui_t *router_ui_create(void)
 	if (!ui)
 		return NULL;
 	build_boot(ui);
+	ui->on_boot = true;
+	lv_screen_load(ui->boot_scr);
+	lv_refr_now(lv_disp_get_default());
 	for (i = 0; i < ROUTER_PAGE_COUNT; i++)
 		build_page(ui, (router_page_t)i);
 	ui->current = ROUTER_PAGE_SYSTEM;
-	ui->on_boot = true;
-	lv_screen_load(ui->boot_scr);
 	return ui;
 }
 

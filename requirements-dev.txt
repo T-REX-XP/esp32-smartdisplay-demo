@@ -1,0 +1,25 @@
+# Development and Testing Dependencies
+# Install with: pip install -r requirements-dev.txt
+
+# Core Runtime Dependencies
+-r requirements.txt
+
+# Testing Framework
+pytest>=7.0,<8.0
+pytest-asyncio>=0.21,<1.0
+pytest-cov>=4.0,<5.0
+
+# Code Quality Tools
+black>=23.0,<24.0
+pylint>=3.0,<4.0
+flake8>=6.0,<7.0
+mypy>=1.0,<2.0
+
+# Web Server (Production WSGI)
+gunicorn>=21.0,<22.0
+
+# Environment Management
+python-dotenv>=1.0,<2.0
+
+# Additional Utilities
+autopep8>=2.0,<3.0
