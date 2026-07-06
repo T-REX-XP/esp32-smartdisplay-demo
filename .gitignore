@@ -1,6 +1,8 @@
 .*
 ./
 *.log
+__pycache__/
+*.pyc
 workspace.code-workspace
 autosave/
 backup/

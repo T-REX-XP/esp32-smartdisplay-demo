@@ -11,3 +11,4 @@
 ### Fixed
 
 - `esp32_simulator.py` — implement missing `send_msgpack()` (was called by `send_data()` when `--format msgpack`).
+- Remove accidental `__pycache__` from version control; ignore `__pycache__/` and `*.pyc`.
