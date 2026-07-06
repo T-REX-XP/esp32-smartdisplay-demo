@@ -194,7 +194,7 @@
                                 <i class="fas fa-arrows-alt"></i> RDCP Screen Navigation (host → MCU)
                             </div>
                             <div class="card-body">
-                                <p class="section-hint">Send <code>cmd</code> frames to jump the router UI to a screen.</p>
+                                <p class="section-hint">Host-driven navigation: swipes send <code>evt</code> gestures to the daemon; the daemon replies with <code>cmd</code> + metrics. MCU shows boot splash for 10s by default.</p>
                                 <div id="routerScreenButtons" class="command-group"></div>
                                 <div class="command-group">
                                     <button type="button" class="btn btn-outline-warning btn-command" id="pushAlertBtn">

@@ -37,8 +37,11 @@ class ESP32WebSimulator:
         self.log_queue = queue.Queue()
         self.response_queue = queue.Queue()
         self.rdcp_req_id = 0
-
-        # Sample alarm data (demo gadget)
+        self.router_pages = [
+            "router_system", "router_network", "router_clients",
+            "router_storage", "router_wifi", "router_security",
+        ]
+        self.active_screen = "router_boot"
         self.alarms = [
             {"time": "08:00", "label": "Morning Coffee", "enabled": True},
             {"time": "12:30", "label": "Lunch Break", "enabled": True},
@@ -65,6 +68,7 @@ class ESP32WebSimulator:
             self.serial_conn.rts = False
             time.sleep(3)
             self.log(f"✅ Connected to {self.port} at {self.baudrate} baud")
+            self.send_boot_push("boot", "Starting host simulator...", 15)
             return True
         except serial.SerialException as e:
             self.log(f"❌ Failed to connect to {self.port}: {e}")
@@ -252,6 +256,52 @@ class ESP32WebSimulator:
         frame = {"v": 1, "t": "res", "id": req_id, "data": data}
         self.send_json(frame)
 
+    def send_boot_push(self, stage, text, pct):
+        frame = {
+            "v": 1,
+            "t": "push",
+            "op": "boot",
+            "data": {"stage": stage, "text": text, "pct": pct},
+        }
+        self.send_json(frame)
+
+    def send_cmd_screen(self, screen_id):
+        frame = {
+            "v": 1,
+            "t": "cmd",
+            "op": "screen",
+            "data": {"screen": screen_id},
+        }
+        self.active_screen = screen_id
+        self.send_json(frame)
+
+    def scope_for_screen(self, screen_id):
+        scope_map = {
+            "router_system": "system",
+            "router_network": "network",
+            "router_clients": "clients",
+            "router_storage": "storage",
+            "router_wifi": "wifi",
+            "router_security": "security",
+        }
+        return scope_map.get(screen_id, "system")
+
+    def page_neighbor(self, screen_id, direction):
+        if screen_id == "router_boot":
+            return self.router_pages[0]
+        try:
+            idx = self.router_pages.index(screen_id)
+        except ValueError:
+            return self.router_pages[0]
+        if direction in ("left", "next"):
+            return self.router_pages[(idx + 1) % len(self.router_pages)]
+        return self.router_pages[(idx - 1) % len(self.router_pages)]
+
+    def handle_gesture(self, direction):
+        nxt = self.page_neighbor(self.active_screen, direction)
+        self.log(f"👆 Gesture {direction}: {self.active_screen} -> {nxt}")
+        self.send_cmd_screen(nxt)
+
     def handle_rdcp_request(self, command):
         """MCU → host RDCP req (metrics, etc.)."""
         req_id = command.get("id", 0)
@@ -316,10 +366,19 @@ class ESP32WebSimulator:
                 if t == "req":
                     self.handle_rdcp_request(command)
                     return
-                if t == "evt" and command.get("op") == "screen":
-                    screen = command.get("data", {}).get("screen", "?")
-                    self.log(f"📱 MCU screen event: {screen}")
-                    return
+                if t == "evt":
+                    op = command.get("op")
+                    data = command.get("data", {})
+                    if op == "screen":
+                        screen = data.get("screen", "?")
+                        self.active_screen = screen
+                        self.log(f"📱 MCU screen event: {screen}")
+                        if screen == "router_boot":
+                            self.send_boot_push("boot", "Host connected — booting...", 25)
+                        return
+                    if op == "input" and data.get("type") == "gesture":
+                        self.handle_gesture(data.get("dir", "left"))
+                        return
 
             if "screen" in command:
                 self.handle_screen_change(command["screen"])

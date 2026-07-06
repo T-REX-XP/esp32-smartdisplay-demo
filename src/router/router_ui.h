@@ -19,9 +19,13 @@ typedef struct router_ui router_ui_t;
 router_ui_t *router_ui_create(void);
 void router_ui_destroy(router_ui_t *ui);
 void router_ui_show_page(router_ui_t *ui, router_page_t page, lv_scr_load_anim_t anim);
+void router_ui_show_boot(router_ui_t *ui);
+void router_ui_set_boot_status(router_ui_t *ui, const char *text, unsigned pct);
+bool router_ui_on_boot(const router_ui_t *ui);
 router_page_t router_ui_current_page(const router_ui_t *ui);
 void router_ui_refresh(router_ui_t *ui, const router_metrics_t *metrics);
 lv_obj_t *router_ui_screen(const router_ui_t *ui, router_page_t page);
+lv_obj_t *router_ui_boot_screen(router_ui_t *ui);
 
 #ifdef __cplusplus
 }

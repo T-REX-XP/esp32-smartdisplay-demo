@@ -1,6 +1,9 @@
 #include "router_pages.h"
 
 #include <stddef.h>
+#include <string.h>
+
+#define ROUTER_SCREEN_BOOT "router_boot"
 
 static const char *const PAGE_IDS[ROUTER_PAGE_COUNT] = {
 	"router_system",
@@ -32,4 +35,9 @@ const char *router_page_scope(router_page_t page)
 	if (page < 0 || page >= ROUTER_PAGE_COUNT)
 		return "";
 	return PAGE_SCOPES[page];
+}
+
+bool router_page_is_boot_id(const char *screen_id)
+{
+	return screen_id && !strcmp(screen_id, ROUTER_SCREEN_BOOT);
 }

@@ -21,6 +21,7 @@ typedef enum {
 
 const char *router_page_id(router_page_t page);
 const char *router_page_scope(router_page_t page);
+bool router_page_is_boot_id(const char *screen_id);
 
 #ifdef __cplusplus
 }

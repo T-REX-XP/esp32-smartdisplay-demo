@@ -17,6 +17,11 @@ LV_IMG_DECLARE(ui_img_pattern_png);
 #define COL_WARN lv_color_hex(0xC62828)
 
 struct router_ui {
+	lv_obj_t *boot_scr;
+	lv_obj_t *boot_msg_lbl;
+	lv_obj_t *boot_bar;
+	bool on_boot;
+
 	lv_obj_t *screens[ROUTER_PAGE_COUNT];
 	router_page_t current;
 
@@ -274,6 +279,27 @@ static void build_security(router_ui_t *ui, lv_obj_t *scr)
 	lv_obj_align(ui->sec_vpn_lbl, LV_ALIGN_BOTTOM_LEFT, 0, -4);
 }
 
+static void build_boot(router_ui_t *ui)
+{
+	lv_obj_t *scr = make_screen_bg();
+
+	add_header(scr, "BOOTING", NULL);
+	ui->boot_msg_lbl = add_body_label(scr, "Waiting for router...", LV_ALIGN_CENTER, 0, -20);
+	lv_obj_set_style_text_font(ui->boot_msg_lbl, &lv_font_montserrat_18, LV_PART_MAIN);
+	lv_label_set_long_mode(ui->boot_msg_lbl, LV_LABEL_LONG_WRAP);
+	lv_obj_set_width(ui->boot_msg_lbl, lv_pct(88));
+
+	ui->boot_bar = lv_bar_create(scr);
+	lv_obj_set_size(ui->boot_bar, lv_pct(80), 12);
+	lv_obj_align(ui->boot_bar, LV_ALIGN_CENTER, 0, 24);
+	lv_bar_set_range(ui->boot_bar, 0, 100);
+	lv_bar_set_value(ui->boot_bar, 0, LV_ANIM_OFF);
+	lv_obj_set_style_bg_color(ui->boot_bar, COL_MUTED, LV_PART_MAIN);
+	lv_obj_set_style_bg_color(ui->boot_bar, COL_ACCENT, LV_PART_INDICATOR);
+
+	ui->boot_scr = scr;
+}
+
 static void build_page(router_ui_t *ui, router_page_t page)
 {
 	const char *titles[] = { "SYSTEM", "NETWORK", "CLIENTS", "STORAGE", "WIFI AP", "SECURITY" };
@@ -314,10 +340,12 @@ router_ui_t *router_ui_create(void)
 
 	if (!ui)
 		return NULL;
+	build_boot(ui);
 	for (i = 0; i < ROUTER_PAGE_COUNT; i++)
 		build_page(ui, (router_page_t)i);
 	ui->current = ROUTER_PAGE_SYSTEM;
-	lv_screen_load(ui->screens[ui->current]);
+	ui->on_boot = true;
+	lv_screen_load(ui->boot_scr);
 	return ui;
 }
 
@@ -327,6 +355,8 @@ void router_ui_destroy(router_ui_t *ui)
 
 	if (!ui)
 		return;
+	if (ui->boot_scr)
+		lv_obj_delete(ui->boot_scr);
 	for (i = 0; i < ROUTER_PAGE_COUNT; i++) {
 		if (ui->screens[i])
 			lv_obj_delete(ui->screens[i]);
@@ -334,10 +364,37 @@ void router_ui_destroy(router_ui_t *ui)
 	free(ui);
 }
 
+void router_ui_show_boot(router_ui_t *ui)
+{
+	if (!ui || !ui->boot_scr)
+		return;
+	ui->on_boot = true;
+	lv_screen_load(ui->boot_scr);
+}
+
+void router_ui_set_boot_status(router_ui_t *ui, const char *text, unsigned pct)
+{
+	if (!ui)
+		return;
+	if (text && ui->boot_msg_lbl)
+		lv_label_set_text(ui->boot_msg_lbl, text);
+	if (ui->boot_bar) {
+		if (pct > 100)
+			pct = 100;
+		lv_bar_set_value(ui->boot_bar, pct, LV_ANIM_ON);
+	}
+}
+
+bool router_ui_on_boot(const router_ui_t *ui)
+{
+	return ui && ui->on_boot;
+}
+
 void router_ui_show_page(router_ui_t *ui, router_page_t page, lv_scr_load_anim_t anim)
 {
 	if (!ui || page < 0 || page >= ROUTER_PAGE_COUNT)
 		return;
+	ui->on_boot = false;
 	ui->current = page;
 	lv_screen_load_anim(ui->screens[page], anim, 200, 0, false);
 }
@@ -352,6 +409,11 @@ lv_obj_t *router_ui_screen(const router_ui_t *ui, router_page_t page)
 	if (!ui || page < 0 || page >= ROUTER_PAGE_COUNT)
 		return NULL;
 	return ui->screens[page];
+}
+
+lv_obj_t *router_ui_boot_screen(router_ui_t *ui)
+{
+	return ui ? ui->boot_scr : NULL;
 }
 
 static int cpu_value(const char *cpu)
