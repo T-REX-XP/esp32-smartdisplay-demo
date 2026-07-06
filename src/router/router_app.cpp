@@ -181,7 +181,6 @@ static void handle_cmd(JsonObject data, const char *op)
 		const char *dir = data["dir"] | "next";
 		router_page_t page = router_ui_current_page(g_ui);
 		router_page_t next = page;
-		lv_scr_load_anim_t anim = anim_for_dir(dir);
 		const char *gesture_dir = dir;
 
 		if (!strcmp(dir, "prev") || !strcmp(dir, "right")) {
