@@ -1,496 +1,144 @@
-# Bare minimum sketch for the Sunton aka Cheap Yellow Display (CYD) boards. ESP32_1732S019N/C, 2424S012N/C, 2432S024R/C/N, 2432S028R, 2432S032N/R/C, 3248S035R/C, 4827S043R/C, 4848S040C, 8048S050N/C and 8048S070N/C
+# ESP32 MCU display firmware (CM5 / ImmortalWrt)
 
-For [PlatformIO](https://platformio.org/)
+LVGL firmware for a **Sunton ESP32-2432S022C** (2.2" 240×320) used as the Orange Pi **CM5** router display. The panel talks to ImmortalWrt over UART using **RDCP v1** (newline-terminated JSON). The host side is `mcudd` in [luci-app-mcu-display](https://github.com/T-REX-XP/openwrt-packages) (**Services → MCU Display**).
 
-[![Platform IO CI](https://github.com/rzeldent/esp32-smartdisplay-demo/actions/workflows/main.yml/badge.svg)](https://github.com/rzeldent/esp32-smartdisplay-demo/actions/workflows/main.yml)
+This tree is a fork of [rzeldent/esp32-smartdisplay-demo](https://github.com/rzeldent/esp32-smartdisplay-demo). The **production** build is `esp32-2432S022C-router`. The default PlatformIO env (`esp32-2432S022C`) is the upstream EEZ demo (Clock / Weather / Alarm) and is **not** what the CM5 image expects.
 
-This is a demo application for the [esp32-smartdisplay](https://github.com/rzeldent/esp32-smartdisplay) library that is intended to be used in [PlatformIO](https://platformio.org/).
-See [https://github.com/rzeldent/esp32-smartdisplay](https://github.com/rzeldent/esp32-smartdisplay/) for more information about the driver library.
+> Clone with submodules: `git clone --recurse-submodules`. Required for the [Sunton board definitions](https://github.com/rzeldent/platformio-espressif32-sunton).
 
-> [!WARNING]
-> Do not forget to clone this repository with submodules: `git clone --recurse-submodules`!
-> This is required to also have the latest version of the [Sunton boards definitions](https://github.com/rzeldent/platformio-espressif32-sunton).
+## Stack
 
-Example with sound! (if WiFi credentials are provided and speaker attached)
+| Side | Component | Role |
+|------|-----------|------|
+| ESP32 | this firmware (`ROUTER_UI=1`) | LVGL screens, swipe, RDCP JSON |
+| CM5 | `mcudd` | UART bridge, metrics, boot/alerts, FIFO from buttons/LuCI |
+| CM5 | `/etc/mcud/pages.json` | Screen IDs and scopes — keep in sync with `src/router/router_pages.c` |
+| Version | `mcud-version.json` | Shared with the host package (`stack` / `release` / `rdcp`) |
 
-![Example](assets/PXL_20231130_225143662.jpg)
+Current version (from `mcud-version.json`): **stack 1.0.0**, **release 31**, **RDCP 1**.
 
-## Web UI Testing Tool
-
-A comprehensive web interface is available for testing the ESP32 simulator functionality:
-
-### Quick Start (Windows)
-```bash
-# Run with real ESP32 hardware (same as esp32_simulator.py)
-run_webui_test.bat
-
-# Or run with mock simulator (no hardware needed)
-run_webui.bat
+```text
+CM5 ttyS2  <── 115200 8N1 ──>  ESP32 UART2 (GPIO3 RX / GPIO1 TX)
+mcudd                          router_app + LVGL
+LuCI / USERKEY / MaskROM
 ```
 
-### Features
-- **Real Serial Communication**: Same UART protocol as original simulator
-- **Web Monitoring**: Real-time logs and responses in browser
-- **Manual Testing**: Send custom commands and test all features
-- **Screen Navigation**: Test all UI screens with one click
-- **Data Requests**: Get CPU metrics, storage info, and alarm lists
+## Hardware
 
-### Hardware Mode (Full Compatibility)
-For testing with actual ESP32:
-```bash
-python esp32_simulator_webui_test.py COM3 115200
-```
-- **Identical functionality** to `esp32_simulator.py`
-- Connects to real ESP32 hardware
-- Handles all JSON commands and MessagePack responses
-- Web interface for monitoring and additional testing
+**Board:** ESP32-2432S022C (USB-C, ST7789 i80, CST816S touch). GPIO16/17 are the LCD DC/CS lines, so RDCP does **not** use the usual UART2 pins.
 
-### Test Mode (No Hardware)
-For development without ESP32:
-```bash
-python esp32_simulator_webui.py COM3 115200
-```
-- Mock simulator for UI testing
-- Generates realistic responses
-- Perfect for interface development
+**Serial (router env):** UART2 remapped to the P1 JST “Power + Serial” header — **GPIO3 RX**, **GPIO1 TX**, 115200 8N1. Those pins are shared with USB-C serial: use **either** USB-C (bench) **or** the JST wired to the CM5, not both TX drivers at once.
 
-See [README_WEBUI.md](README_WEBUI.md) for detailed documentation.
+| CM5 J3 debug pin | Signal | ESP32 (2432S022C) |
+|------------------|--------|-------------------|
+| 1 | GND | GND |
+| 2 | RX (GPIO0_B6) | GPIO1 TX |
+| 3 | TX (GPIO0_B5) | GPIO3 RX |
 
-## Version history
+3.3 V logic only. Cross TX↔RX. The CM5 bootscript leaves `/dev/ttyS2` free for `mcudd` (no runtime kernel console on that port).
 
-- December 2024
-  - Use EEZ Studio for designing the GUI [https://www.envox.eu/studio/studio-introduction/](https://www.envox.eu/studio/studio-introduction/)
-- August 2024
-  - LVGL 9.2
-  - New boards
-- July 2024
-  - LVGL 9.1
-  - Use release 2.0.10
-- June 2024
-  - Update SquareLine project to 1.4.1
-- July 2024
-  - LVGL 9.1
-  - Use release 2.0.10
-- June 2024
-  - Update SquareLine project to 1.4.1
-- March 2024
-  - Added rotate button
-  - Removed radio (and wifi dependencies)
-- December 2023
-  - Release 2.0.0
-  - Updated demo with sound
-- November 2023
-  - Use of new library
-  - Updated demo application with sound
-- March 2023
-  - Demo application created
-- October 2023
-  - Updated UI using [SquareLine Studio](https://squareline.io). This is a graphical UI design tool.
+## Build and flash
 
-## ESP32 OLED Menu System
-
-This project includes an ESP32 OLED menu system that provides a navigation interface for displaying system metrics and managing device functions.
-
-### Overview
-
-The menu system replaces the default LVGL UI with a custom menu interface that displays:
-- **Overview**: System status, temperature, CPU usage, free memory, and uptime
-- **Temperature**: External and internal temperature readings
-- **Storage**: Flash size, free space, heap, and PSRAM information  
-- **Power**: Power off functionality
-
-### Hardware Requirements
-
-#### Buttons
-The system uses three GPIO pins for navigation:
-
-```cpp
-#define BTN_UP 0      // GPIO0 (BOOT button - built-in)
-#define BTN_DOWN 35   // GPIO35 (external button required)
-#define BTN_SELECT 34 // GPIO34 (external button required)
-```
-
-**Button Configuration:**
-- **UP**: Navigate to previous menu item (wraps around)
-- **DOWN**: Navigate to next menu item (wraps around)  
-- **SELECT**: Execute action (only works in Power menu)
-
-#### Display
-- Uses the existing LVGL display (240x320 for ESP32-2432S022C)
-- No additional OLED hardware required
-- Green title text, white content, gray status bar
-
-### Usage
-
-#### Basic Navigation
-1. **Navigate menus**: Use UP/DOWN buttons to cycle through 4 menu screens
-2. **View information**: Each screen displays different system metrics
-3. **Power off**: Navigate to Power menu and press SELECT to shutdown
-
-#### External Metrics
-The menu system can receive metrics via Serial communication:
-
-```json
-{"temp_c":"45","cpu":"23","fs_free":"1.5","fs_used":"2.8"}
-```
-
-**Supported Metrics:**
-- `temp_c`: External temperature in Celsius (string)
-- `cpu`: CPU usage percentage (string)
-- `fs_free`: Free filesystem space in MB (string)
-- `fs_used`: Used filesystem space in MB (string)
-
-## Linux Service Installation
-
-The ESP32 simulator can be installed as a Linux systemd service for automatic startup and real CPU monitoring.
-
-### Quick Install
+[PlatformIO](https://platformio.org/) (CLI or VS Code / Cursor).
 
 ```bash
-# Make installer executable
-chmod +x install.sh
-
-# Run installer (will prompt for serial port)
-./install.sh
+# Production firmware for CM5
+pio run -e esp32-2432S022C-router
+pio run -e esp32-2432S022C-router -t upload
+pio device monitor -e esp32-2432S022C-router   # USB-C only; disconnect JST to CM5
 ```
 
-### What the installer does:
+`scripts/gen_mcud_version.py` runs as a pre-script and writes `src/router/mcud_version.h` from `mcud-version.json`. Do not edit the header by hand. Keep the JSON in lockstep with `openwrt-packages/feeds/luci/luci-app-mcu-display/mcud-version.json`.
 
-1. **Installs dependencies**: Python 3, pip, pyserial, psutil
-2. **Creates service user**: `esp32sim` with minimal privileges
-3. **Installs files**: Copies simulator to `/opt/esp32-simulator/`
-4. **Configures systemd**: Creates and enables the service
-5. **Sets permissions**: Adds user to `dialout` group for serial access
-
-### Service Management
+**Upstream demo UI** (not for the router):
 
 ```bash
-# Check status
-sudo systemctl status esp32-simulator
-
-# View logs
-sudo journalctl -u esp32-simulator -f
-
-# Restart service
-sudo systemctl restart esp32-simulator
-
-# Stop service
-sudo systemctl stop esp32-simulator
+pio run -e esp32-2432S022C -t upload
 ```
 
-### Real CPU Monitoring
+## Screens
 
-The service provides **real system CPU usage** data:
+Swipe left/right (or host `cmd` frames) cycles pages. IDs must match `/etc/mcud/pages.json`.
 
-- **Updates every 1.5 seconds** when Call screen is active
-- **System metrics**: CPU %, temperature, disk usage
-- **Automatic startup** with the Linux system
-- **Background operation** with proper logging
+| Screen ID | Scope | Content |
+|-----------|-------|---------|
+| `router_boot` | — | Splash + boot progress (`push` `op=boot`) |
+| `router_system` | `system` | Hostname, CPU, RAM, uptime |
+| `router_network` | `network` | WAN IP, RX/TX, ping |
+| `router_clients` | `clients` | Wi-Fi / LAN / DHCP counts |
+| `router_storage` | `storage` | Root / data usage |
+| `router_wifi` | `wifi` | SSID, AP state, join QR |
+| `router_security` | `security` | Firewall, blocked, VPN |
 
-### Configuration
+On boot the MCU emits `evt` `screen` (`router_boot`) and `evt` `version`. Until the host sends a frame, swipe navigates locally. After the first valid host line (`hello`, `res`, `cmd`, …) the MCU is **host-linked**: swipe sends `evt` `input` and waits for `mcudd` to reply with `cmd` `screen` / `nav`. Linked pages poll `req` `metrics` every 1.5 s (system) or 2 s (others).
 
-To change the serial port, edit the service file:
+## Protocol (RDCP v1)
+
+Line-delimited JSON (`\n`), max 4096 bytes. Firmware parses **JSON only** (MessagePack / CBOR is not implemented). Set `wire_format=json` in `/etc/config/mcud`.
+
+Details: [docs/rdcp-v1.md](docs/rdcp-v1.md). Host design: `openwrt-packages/docs/luci-app-mcu-display-system-design.md`.
+
+**MCU → host**
+
+```json
+{"v":1,"t":"req","id":1,"op":"metrics","scope":"system"}
+{"v":1,"t":"evt","op":"screen","data":{"screen":"router_system","action":"loaded"}}
+{"v":1,"t":"evt","op":"input","data":{"type":"gesture","dir":"left"}}
+{"v":1,"t":"evt","op":"version","data":{"stack":"1.0.0","release":31,"component":"esp32-router","rdcp":1}}
+```
+
+**Host → MCU**
+
+```json
+{"v":1,"t":"push","op":"hello","data":{"stack":"1.0.0","release":31,"component":"mcudd","rdcp":1}}
+{"v":1,"t":"res","id":1,"data":{"hostname":"cm5","cpu":"12","ram_pct":40}}
+{"v":1,"t":"cmd","op":"screen","data":{"screen":"router_wifi","dir":"left"}}
+{"v":1,"t":"cmd","op":"nav","data":{"dir":"next"}}
+{"v":1,"t":"push","op":"boot","data":{"text":"Network…","pct":60,"screen":"router_boot"}}
+```
+
+`req` `op=version` from the host is answered with another `evt` `version`. Bare metric objects without `"t"` are still accepted (legacy).
+
+## Layout
+
+```text
+src/main.cpp                 # smartdisplay_init; ROUTER_UI vs demo UI
+src/router/                  # production UI + RDCP
+  router_app.cpp             # frames, swipe, polling
+  router_ui.c                # LVGL pages
+  router_data.c              # metrics JSON merge
+  router_pages.c             # screen IDs / scopes
+  rdcp_transport.cpp         # UART2 (GPIO3/1) or USB Serial
+  mcud_version.h             # generated
+src/ui/                      # EEZ Studio demo (excluded from -router)
+mcud-version.json            # stack / release / rdcp
+platformio.ini               # env:esp32-2432S022C-router
+docs/rdcp-v1.md
+```
+
+## Tests and bench
 
 ```bash
-sudo systemctl edit esp32-simulator
+./run_tests.sh                          # C parser + Python protocol tests
+python esp32_simulator.py /dev/ttyUSB0 115200 --format json
 ```
 
-Add or modify the `ExecStart` line with your serial port (e.g., `/dev/ttyACM0`).
+Use `--format json` until the firmware parses MessagePack. The Flask web UI (`README_WEBUI.md`) targets the **demo** Clock/Weather screens, not the router pages.
 
-### Screen Navigation
+On the router, after flash:
 
-Switch between UI screens remotely:
-
-```json
-{"screen": "ScreenName"}
+```sh
+logread -e mcudd | tail
+cat /tmp/mcud_firmware_version.json     # filled after version handshake
 ```
 
-**Supported Screens:**
-- `"Clock"`: Main clock display
-- `"Weather"`: Weather information
-- `"Alarm"`: Alarm management
-- `"Chat"`: Chat interface
-- `"Music"`: Music player
-- `"Call"`: CPU load gauge
-- `"Splash"`: Splash screen
+LuCI **Services → MCU Display** should show a matching stack/release. USERKEY = next page, MaskROM = previous (`cm5-button-scripts`).
 
-**Example:**
-```json
-{"screen": "Weather"}
-```
+## Related
 
-### Data Requests
-
-Request specific data from the server:
-
-#### Alarm List Request
-```json
-{"request": "alarms"}
-```
-
-**Response:**
-```json
-{
-  "alarms": [
-    {"time": "08:00", "label": "Morning Coffee", "enabled": true},
-    {"time": "12:30", "label": "Lunch Break", "enabled": true}
-  ]
-}
-```
-
-#### CPU Metrics Request
-```json
-{"request": "cpu"}
-```
-
-**Response:**
-```json
-{"cpu": "45", "temp_c": "38.5", "fs_free": "1.2", "fs_used": "2.8"}
-```
-
-### CPU Load Gauge
-
-The Call screen now displays a real-time CPU usage gauge that updates automatically when metrics are received:
-
-- Visual analog gauge with filled arc indicator (0-100%)
-- Percentage label below the gauge
-- Updates in real-time as `cpu` metric values are sent via UART
-- Continuous monitoring when screen is active
-
-**Automatic Behavior:**
-- When Call screen opens: MCU starts sending `{"request": "cpu"}` every 1.5 seconds
-- Server responds with real system CPU metrics for each request
-- When leaving Call screen: CPU monitoring stops
-
-**Example CPU Update:**
-```json
-{"cpu": "75"}
-```
-
-### Alarm Management
-
-Update the alarm list dynamically:
-
-```json
-{"alarms": [
-  {"time": "08:00", "label": "Breakfast", "enabled": true},
-  {"time": "14:30", "label": "Meeting", "enabled": false}
-]}
-```
-
-**Automatic Behavior:**
-- When Alarm screen opens: MCU sends `{"request": "alarms"}`
-- Server responds with current alarm list
-- Screen updates automatically with received data
-
-**Alarm Properties:**
-- `time`: Alarm time in "HH:MM" format (string)
-- `label`: Alarm description/label (string)
-- `enabled`: Whether the alarm is active (boolean)
-
-**Notes:**
-- Sending an empty array `{"alarms": []}` clears all alarms
-- The Alarm screen updates automatically if currently active
-- Displays "No alarm" when the list is empty
-
-### Metrics Update
-
-Send system metrics for display:
-
-```json
-{"temp_c": "42.5", "cpu": "15", "fs_free": "1.2", "fs_used": "2.8"}
-```
-
-**Supported Metrics:**
-- `temp_c`: External temperature in Celsius (string)
-- `cpu`: CPU usage percentage (string) - *Used for CPU gauge on Call screen*
-- `fs_free`: Free filesystem space in MB (string)
-- `fs_used`: Used filesystem space in MB (string)
-
-### Payload Examples
-
-#### Standard Metrics Update
-```json
-{"temp_c":"42.5","cpu":"15","fs_free":"1.2","fs_used":"2.8"}
-```
-
-#### Partial Metrics (will merge with existing data)
-```json
-{"temp_c":"38.0"}
-```
-
-#### Power Command (sent by device)
-```json
-{"cmd":"POWEROFF"}
-```
-
-### Communication Protocol
-
-#### Receiving Commands
-Send JSON objects via Serial (115200 baud) ending with newline:
-
-```bash
-# Update metrics
-echo '{"temp_c":"45","cpu":"30"}' > /dev/ttyUSB0
-
-# Switch screen
-echo '{"screen":"Weather"}' > /dev/ttyUSB0
-
-# Update alarms
-echo '{"alarms":[{"time":"08:00","label":"Breakfast","enabled":true}]}' > /dev/ttyUSB0
-```
-
-#### Automatic Updates
-- The system requests simulated metrics every 1 second
-- Real metrics should be sent via Serial when available
-- Display updates every 250ms
-- Screen navigation and alarm updates are processed immediately
-
-### Integration Examples
-
-#### Python Example
-```python
-import serial
-import json
-import time
-
-ser = serial.Serial('/dev/ttyUSB0', 115200)
-
-while True:
-    # Send metrics
-    metrics = {
-        "temp_c": str(45 + time.time() % 10),
-        "cpu": str(int(20 + time.time() % 80)),
-        "fs_free": "1.5",
-        "fs_used": "2.8"
-    }
-    ser.write((json.dumps(metrics) + "\n").encode())
-    
-    # Switch to Weather screen
-    ser.write(b'{"screen": "Weather"}\n')
-    
-    # Update alarms
-    alarms = {
-        "alarms": [
-            {"time": "08:00", "label": "Breakfast", "enabled": True},
-            {"time": "14:30", "label": "Meeting", "enabled": False}
-        ]
-    }
-    ser.write((json.dumps(alarms) + "\n").encode())
-    
-    time.sleep(5)
-```
-
-#### Arduino Example
-```cpp
-#include <ArduinoJson.h>
-
-void sendMetrics() {
-    JsonDocument doc;
-    doc["temp_c"] = String(temperatureSensor.read());
-    doc["cpu"] = String(getCpuUsage());
-    doc["fs_free"] = String(getFreeSpace());
-    
-    Serial.println(doc.as<String>());
-}
-
-void switchToWeather() {
-    JsonDocument doc;
-    doc["screen"] = "Weather";
-    Serial.println(doc.as<String>());
-}
-
-void updateAlarms() {
-    JsonDocument doc;
-    JsonArray alarms = doc["alarms"].to<JsonArray>();
-    
-    JsonObject alarm1 = alarms.createNestedObject();
-    alarm1["time"] = "08:00";
-    alarm1["label"] = "Breakfast";
-    alarm1["enabled"] = true;
-    
-    JsonObject alarm2 = alarms.createNestedObject();
-    alarm2["time"] = "14:30";
-    alarm2["label"] = "Meeting";
-    alarm2["enabled"] = false;
-    
-    Serial.println(doc.as<String>());
-}
-```
-
-### Display Layout
-
-```
-┌─────────────────────────┐
-│    ESP32 Status          │  ← Title (green)
-│                         │
-│  Temp: 42 C             │
-│  CPU: 15%               │  ← Content (white)
-│  Free: 1.2 MB           │
-│  Uptime: 12345 ms       │
-│                         │
-│ Menu: 1/4 | WiFi: Disconnected │  ← Status (gray)
-└─────────────────────────┘
-```
-
-### Configuration
-
-#### Button Pin Changes
-Modify the pin definitions in `main.cpp`:
-
-```cpp
-#define BTN_UP 0      // Change if needed
-#define BTN_DOWN 4    // Change to available pin
-#define BTN_SELECT 2  // Change to available pin
-```
-
-#### Update Intervals
-Adjust timing in the `loop()` function:
-
-```cpp
-// Button check debounce (ms)
-if(now - lastButtonCheck > 150) {
-
-// Display refresh rate (ms)
-if(now - lastRender > 250) {
-
-// Metrics request interval (ms)
-if(millis() - lastReq > 1000) {
-```
-
-### Troubleshooting
-
-#### Buttons Not Working
-1. Check GPIO pin availability for your board
-2. Ensure buttons are wired to GND (active low)
-3. Verify pin definitions match hardware
-
-#### Display Issues
-1. Ensure LVGL fonts are available (uses `lv_font_montserrat_14`)
-2. Check display initialization in `smartdisplay_init()`
-3. Verify screen dimensions match your board
-
-#### Serial Communication
-1. Use 115200 baud rate
-2. End JSON messages with newline (`\n`)
-3. Validate JSON syntax before sending
-
-### Dependencies
-
-- **ArduinoJson 7.x**: For JSON parsing and serialization
-- **ArduinoOTA**: For over-the-air firmware updates (built-in)
-- **WiFi.h**: For WiFi connectivity and OTA
-- **esp32-smartdisplay**: For display and hardware integration
-
-Add to `platformio.ini`:
-```ini
-lib_deps =
-    https://github.com/rzeldent/esp32-smartdisplay
-    bblanchon/ArduinoJson@^7.0.4
-```
-
-### Board Compatibility
-
-Tested with:
-- ESP32-2432S022C (240x320 display)
-- Other ESP32 smartdisplay boards (adjust pin definitions as needed)
+| Repo / doc | Role |
+|------------|------|
+| `openwrt-packages/feeds/luci/luci-app-mcu-display` | `mcudd`, LuCI, `pages.json` |
+| `openwrt-packages/docs/mcu-display-migration-backlog.md` | CM5 backlog and UART wiring |
+| `openwrt-packages/feeds/packages/cm5-button-scripts` | GPIO → mcudd FIFO |
+| [esp32-smartdisplay](https://github.com/rzeldent/esp32-smartdisplay) | Display driver library |

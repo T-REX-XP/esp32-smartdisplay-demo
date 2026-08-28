@@ -1,5 +1,12 @@
 # ESP32 Smart Display Demo — Changelog
 
+## 2026-08-28 (docs)
+
+### Changed
+
+- **README.md** — document production `esp32-2432S022C-router` firmware (RDCP, CM5 UART wiring, pages, version handshake) instead of the old OLED/demo JSON notes.
+- **docs/rdcp-v1.md** — match implemented MCU frames (`hello`, `version`, `cmd` nav/screen, host-link behaviour).
+
 ## 2026-07-06 (router UI)
 
 ### Added

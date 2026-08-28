@@ -1,6 +1,8 @@
 # ESP32 Simulator Web UI
 
-A comprehensive web interface for testing and interacting with the ESP32 Smart Display Simulator. This tool provides a sandbox environment to test all simulator functionalities through an intuitive web interface.
+> **Demo env only.** This UI talks to the upstream Clock / Weather / Alarm firmware (`esp32-2432S022C`), not the CM5 router build (`esp32-2432S022C-router`). For production protocol and wiring, see [README.md](README.md) and [docs/rdcp-v1.md](docs/rdcp-v1.md).
+
+A web interface for testing the ESP32 Smart Display Simulator. Sandbox for serial commands against the EEZ demo screens.
 
 ## Features
 
