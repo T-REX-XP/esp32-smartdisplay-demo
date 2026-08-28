@@ -170,7 +170,10 @@ static void handle_cmd(JsonObject data, const char *op)
 
 	if (!strcmp(op, "screen")) {
 		const char *screen = data["screen"];
-		const char *dir = g_last_gesture_dir[0] ? g_last_gesture_dir : "left";
+		const char *dir = data["dir"] | (g_last_gesture_dir[0] ? g_last_gesture_dir : "left");
+
+		if (!screen || !screen[0])
+			return;
 
 		apply_host_screen(screen, anim_for_dir(dir));
 		return;
