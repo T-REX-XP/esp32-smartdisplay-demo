@@ -99,8 +99,8 @@ static void test_network_ports_and_ping(void)
 		"\"rx_rate\":\"1.2M/s\",\"tx_rate\":\"80.0K/s\","
 		"\"ping_ms\":12,\"ping_ok\":true,"
 		"\"eth0_role\":\"WAN\",\"eth0_up\":true,\"eth0_speed\":\"2.5G\","
-		"\"eth1_role\":\"LAN\",\"eth1_up\":true,\"eth1_speed\":\"2.5G\","
-		"\"eth2_role\":\"LAN\",\"eth2_up\":false,\"eth2_speed\":\"--\"}";
+		"\"eth1_role\":\"LAN1\",\"eth1_up\":true,\"eth1_speed\":\"2.5G\","
+		"\"eth2_role\":\"LAN2\",\"eth2_up\":false,\"eth2_speed\":\"--\"}";
 
 	router_data_init(&m);
 	router_data_apply_json(&m, json);
@@ -113,7 +113,7 @@ static void test_network_ports_and_ping(void)
 	expect(m.eth2_up == false, "eth2 down");
 	expect(!strcmp(m.eth0_speed, "2.5G"), "eth0 speed");
 	expect(!strcmp(m.eth0_role, "WAN"), "eth0 role");
-	expect(!strcmp(m.eth2_role, "LAN"), "eth2 role");
+	expect(!strcmp(m.eth2_role, "LAN2"), "eth2 role");
 }
 
 static void test_wifi_payload(void)

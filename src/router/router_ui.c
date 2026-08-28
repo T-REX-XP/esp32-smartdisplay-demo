@@ -118,6 +118,7 @@ struct router_ui {
 #define ROUTER_BODY_BOT   (ROUTER_SCR_H - ROUTER_NAV_H)
 #define ROUTER_CARD_H     48
 #define ROUTER_ROW_H      34
+#define ROUTER_PORT_ROW_H 28
 #define ROUTER_GAP        6
 
 static int body_y(int offset)
@@ -365,7 +366,7 @@ static void add_port_row(lv_obj_t *parent, int y, const char *title,
 {
 	lv_obj_t *row = lv_obj_create(parent);
 
-	lv_obj_set_size(row, lv_pct(92), ROUTER_ROW_H);
+	lv_obj_set_size(row, lv_pct(92), ROUTER_PORT_ROW_H);
 	lv_obj_align(row, LV_ALIGN_TOP_MID, 0, y);
 	lv_obj_remove_flag(row, LV_OBJ_FLAG_SCROLLABLE);
 	lv_obj_set_style_bg_color(row, COL_PANEL, LV_PART_MAIN);
@@ -380,13 +381,13 @@ static void add_port_row(lv_obj_t *parent, int y, const char *title,
 	lv_label_set_text(*name_lbl, title);
 	lv_obj_set_style_text_color(*name_lbl, COL_TEXT, LV_PART_MAIN);
 	lv_obj_set_style_text_font(*name_lbl, &lv_font_montserrat_14, LV_PART_MAIN);
-	lv_obj_align(*name_lbl, LV_ALIGN_LEFT_MID, 18, 0);
+	lv_obj_align(*name_lbl, LV_ALIGN_LEFT_MID, 20, 0);
 
 	*speed_lbl = lv_label_create(row);
 	lv_label_set_text(*speed_lbl, "--");
 	lv_obj_set_style_text_color(*speed_lbl, COL_MUTED, LV_PART_MAIN);
 	lv_obj_set_style_text_font(*speed_lbl, &lv_font_montserrat_14, LV_PART_MAIN);
-	lv_obj_align(*speed_lbl, LV_ALIGN_RIGHT_MID, -36, 0);
+	lv_obj_align(*speed_lbl, LV_ALIGN_RIGHT_MID, -34, 0);
 
 	*badge = lv_label_create(row);
 	lv_label_set_text(*badge, "DOWN");
@@ -398,30 +399,35 @@ static void add_port_row(lv_obj_t *parent, int y, const char *title,
 static void build_network(router_ui_t *ui, lv_obj_t *scr)
 {
 	const int wan_y = body_y(0);
-	const int stats_y = body_y(54);
-	const int row0_y = body_y(80);
-	const int row1_y = body_y(80 + ROUTER_ROW_H + ROUTER_GAP);
-	const int row2_y = body_y(80 + 2 * (ROUTER_ROW_H + ROUTER_GAP));
-	lv_obj_t *card = add_metric_card(scr, ROUTER_ICON_ETHERNET, "WAN", wan_y, 44, NULL);
+	const int stats_y = body_y(42);
+	const int row0_y = body_y(118);
+	const int row1_y = body_y(118 + ROUTER_PORT_ROW_H + ROUTER_GAP);
+	const int row2_y = body_y(118 + 2 * (ROUTER_PORT_ROW_H + ROUTER_GAP));
+	lv_obj_t *card = add_metric_card(scr, ROUTER_ICON_ETHERNET, "WAN", wan_y, 36, NULL);
 
 	ui->net_wan_lbl = lv_label_create(card);
 	lv_label_set_text(ui->net_wan_lbl, "--");
 	lv_obj_set_style_text_color(ui->net_wan_lbl, COL_ACCENT, LV_PART_MAIN);
-	lv_obj_set_style_text_font(ui->net_wan_lbl, &lv_font_montserrat_18, LV_PART_MAIN);
-	lv_obj_align(ui->net_wan_lbl, LV_ALIGN_CENTER, 0, 4);
+	lv_obj_set_style_text_font(ui->net_wan_lbl, &lv_font_montserrat_14, LV_PART_MAIN);
+	lv_label_set_long_mode(ui->net_wan_lbl, LV_LABEL_LONG_DOT);
+	lv_obj_set_width(ui->net_wan_lbl, lv_pct(100));
+	lv_obj_align(ui->net_wan_lbl, LV_ALIGN_CENTER, 0, 2);
 
 	add_montserrat_symbol(scr, LV_SYMBOL_DOWNLOAD, COL_MUTED, LV_ALIGN_TOP_LEFT, 8, stats_y);
 	add_montserrat_symbol(scr, LV_SYMBOL_UPLOAD, COL_MUTED, LV_ALIGN_TOP_LEFT, 8,
-			      stats_y + 18);
+			      stats_y + 16);
 	ui->net_rx_lbl = add_body_label(scr, "RX --", LV_ALIGN_TOP_LEFT, 26, stats_y);
-	ui->net_tx_lbl = add_body_label(scr, "TX --", LV_ALIGN_TOP_LEFT, 26, stats_y + 18);
-	ui->net_ping_lbl = add_body_label(scr, "PING --", LV_ALIGN_TOP_RIGHT, -10, stats_y);
+	ui->net_tx_lbl = add_body_label(scr, "TX --", LV_ALIGN_TOP_LEFT, 26, stats_y + 16);
+	ui->net_ping_lbl = add_body_label(scr, "PING --", LV_ALIGN_TOP_RIGHT, -8, stats_y + 16);
+	lv_obj_set_style_text_font(ui->net_rx_lbl, &lv_font_montserrat_14, LV_PART_MAIN);
+	lv_obj_set_style_text_font(ui->net_tx_lbl, &lv_font_montserrat_14, LV_PART_MAIN);
+	lv_obj_set_style_text_font(ui->net_ping_lbl, &lv_font_montserrat_14, LV_PART_MAIN);
 
-	add_port_row(scr, row0_y, "eth0 WAN", &ui->net_eth0_lbl, &ui->net_eth0_speed,
+	add_port_row(scr, row0_y, "WAN", &ui->net_eth0_lbl, &ui->net_eth0_speed,
 		     &ui->net_eth0_badge);
-	add_port_row(scr, row1_y, "eth1 LAN", &ui->net_eth1_lbl, &ui->net_eth1_speed,
+	add_port_row(scr, row1_y, "LAN1", &ui->net_eth1_lbl, &ui->net_eth1_speed,
 		     &ui->net_eth1_badge);
-	add_port_row(scr, row2_y, "eth2 LAN", &ui->net_eth2_lbl, &ui->net_eth2_speed,
+	add_port_row(scr, row2_y, "LAN2", &ui->net_eth2_lbl, &ui->net_eth2_speed,
 		     &ui->net_eth2_badge);
 }
 
@@ -519,27 +525,51 @@ static void build_storage(router_ui_t *ui, lv_obj_t *scr)
 
 static void build_wifi(router_ui_t *ui, lv_obj_t *scr)
 {
-	const int info_y = body_y(0);
+	const int top = body_y(0);
+	lv_obj_t *card = lv_obj_create(scr);
 
-	add_icon_label(scr, ROUTER_ICON_WIFI, COL_ACCENT, LV_ALIGN_TOP_LEFT, 8, info_y);
-	ui->wifi_ssid_lbl = add_body_label(scr, "SSID", LV_ALIGN_TOP_LEFT, 28, info_y);
-	lv_obj_set_style_text_font(ui->wifi_ssid_lbl, &lv_font_montserrat_18, LV_PART_MAIN);
+	lv_obj_set_size(card, 148, 100);
+	lv_obj_align(card, LV_ALIGN_TOP_LEFT, 8, top);
+	lv_obj_remove_flag(card, LV_OBJ_FLAG_SCROLLABLE);
+	lv_obj_set_style_bg_color(card, COL_PANEL, LV_PART_MAIN);
+	lv_obj_set_style_bg_opa(card, LV_OPA_COVER, LV_PART_MAIN);
+	lv_obj_set_style_radius(card, 10, LV_PART_MAIN);
+	lv_obj_set_style_border_width(card, 0, LV_PART_MAIN);
+	lv_obj_set_style_pad_all(card, 6, LV_PART_MAIN);
+	add_icon_label(card, ROUTER_ICON_WIFI, COL_MUTED, LV_ALIGN_TOP_LEFT, 0, 0);
+	lv_obj_t *hdr = lv_label_create(card);
+	lv_label_set_text(hdr, "Wi-Fi AP");
+	lv_obj_set_style_text_color(hdr, COL_MUTED, LV_PART_MAIN);
+	lv_obj_set_style_text_font(hdr, &lv_font_montserrat_14, LV_PART_MAIN);
+	lv_obj_align(hdr, LV_ALIGN_TOP_LEFT, 18, 0);
+
+	ui->wifi_ssid_lbl = lv_label_create(card);
+	lv_label_set_text(ui->wifi_ssid_lbl, "SSID --");
+	lv_obj_set_style_text_color(ui->wifi_ssid_lbl, COL_TEXT, LV_PART_MAIN);
+	lv_obj_set_style_text_font(ui->wifi_ssid_lbl, &lv_font_montserrat_14, LV_PART_MAIN);
 	lv_label_set_long_mode(ui->wifi_ssid_lbl, LV_LABEL_LONG_DOT);
-	lv_obj_set_width(ui->wifi_ssid_lbl, 96);
+	lv_obj_set_width(ui->wifi_ssid_lbl, 128);
+	lv_obj_align(ui->wifi_ssid_lbl, LV_ALIGN_TOP_LEFT, 0, 22);
 
-	ui->wifi_enc_lbl = add_body_label(scr, "--", LV_ALIGN_TOP_LEFT, 10, info_y + 24);
+	ui->wifi_enc_lbl = lv_label_create(card);
+	lv_label_set_text(ui->wifi_enc_lbl, "--");
 	lv_obj_set_style_text_color(ui->wifi_enc_lbl, COL_MUTED, LV_PART_MAIN);
+	lv_obj_set_style_text_font(ui->wifi_enc_lbl, &lv_font_montserrat_14, LV_PART_MAIN);
+	lv_label_set_long_mode(ui->wifi_enc_lbl, LV_LABEL_LONG_DOT);
+	lv_obj_set_width(ui->wifi_enc_lbl, 128);
+	lv_obj_align(ui->wifi_enc_lbl, LV_ALIGN_TOP_LEFT, 0, 42);
 
-	ui->wifi_state_lbl = add_body_label(scr, "AP --", LV_ALIGN_TOP_LEFT, 10, info_y + 44);
+	ui->wifi_state_lbl = lv_label_create(card);
+	lv_label_set_text(ui->wifi_state_lbl, "AP --");
 	lv_obj_set_style_text_color(ui->wifi_state_lbl, COL_MUTED, LV_PART_MAIN);
+	lv_obj_set_style_text_font(ui->wifi_state_lbl, &lv_font_montserrat_14, LV_PART_MAIN);
+	lv_obj_align(ui->wifi_state_lbl, LV_ALIGN_TOP_LEFT, 0, 62);
 
 	ui->wifi_qr = lv_qrcode_create(scr);
-	lv_qrcode_set_size(ui->wifi_qr, 96);
-	lv_obj_align(ui->wifi_qr, LV_ALIGN_BOTTOM_RIGHT, -8, -(ROUTER_NAV_H + 8));
+	lv_qrcode_set_size(ui->wifi_qr, 72);
+	lv_obj_align(ui->wifi_qr, LV_ALIGN_TOP_RIGHT, -8, top + 4);
 	lv_qrcode_set_dark_color(ui->wifi_qr, COL_TEXT);
 	lv_qrcode_set_light_color(ui->wifi_qr, COL_QR_LIGHT);
-
-	add_body_label(scr, "Scan to join", LV_ALIGN_BOTTOM_LEFT, 10, -(ROUTER_NAV_H + 10));
 }
 
 static void build_security(router_ui_t *ui, lv_obj_t *scr)

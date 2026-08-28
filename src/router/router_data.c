@@ -116,7 +116,7 @@ void router_data_init(router_metrics_t *m)
 	set_str(m->cpu, ROUTER_STR_LEN, "0");
 	set_str(m->cpu_temp, ROUTER_STR_LEN, NULL);
 	set_str(m->wan_ip, ROUTER_STR_LEN, NULL);
-	set_str(m->wan_dev, sizeof(m->wan_dev), "eth0");
+	set_str(m->wan_dev, sizeof(m->wan_dev), "--");
 	set_str(m->rx_rate, ROUTER_STR_LEN, NULL);
 	set_str(m->tx_rate, ROUTER_STR_LEN, NULL);
 	set_str(m->wifi_ssid, ROUTER_STR_LEN, NULL);
@@ -138,8 +138,8 @@ void router_data_init(router_metrics_t *m)
 	m->ping_ms = -1;
 	m->ping_ok = false;
 	set_str(m->eth0_role, sizeof(m->eth0_role), "WAN");
-	set_str(m->eth1_role, sizeof(m->eth1_role), "LAN");
-	set_str(m->eth2_role, sizeof(m->eth2_role), "LAN");
+	set_str(m->eth1_role, sizeof(m->eth1_role), "LAN1");
+	set_str(m->eth2_role, sizeof(m->eth2_role), "LAN2");
 	set_str(m->eth0_speed, sizeof(m->eth0_speed), NULL);
 	set_str(m->eth1_speed, sizeof(m->eth1_speed), NULL);
 	set_str(m->eth2_speed, sizeof(m->eth2_speed), NULL);
