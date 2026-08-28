@@ -13,6 +13,7 @@
 #define ROUTER_SWIPE_MIN_PX 40
 
 #ifndef ROUTER_BTN_SW1_GPIO
+/* ESP32-2432S022: SW1 (IP5306 KEY) is not on ESP32 — use BOOT (GPIO0). Override for external GPIO. */
 #define ROUTER_BTN_SW1_GPIO 0
 #endif
 #ifndef ROUTER_BTN_DEBOUNCE_MS
@@ -54,7 +55,7 @@ static bool sw1_pressed(void)
 
 static void emit_poweroff_request(void)
 {
-	send_line("{\"v\":1,\"t\":\"req\",\"op\":\"poweroff\",\"data\":{\"source\":\"sw1\"}}");
+	send_line("{\"v\":1,\"t\":\"req\",\"op\":\"poweroff\",\"data\":{\"source\":\"boot\"}}");
 }
 
 static void router_app_init_button(void)

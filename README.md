@@ -37,6 +37,18 @@ LuCI / USERKEY / MaskROM
 
 3.3 V logic only. Cross TX↔RX. The CM5 bootscript leaves `/dev/ttyS2` free for `mcudd` (no runtime kernel console on that port).
 
+**Buttons (2432S022 — not the same key):**
+
+| Silkscreen | Wired to | Firmware |
+|------------|----------|----------|
+| **BOOT** | ESP32 **GPIO0** | Short tap → next page; long hold → power-off countdown |
+| **SW1** | IP5306 **KEY** (battery/power IC) | **Not readable** by ESP32 — toggles boost/charge LEDs only |
+| **RST** | EN reset | Hardware reset only |
+
+Navigation in firmware uses **BOOT (GPIO0)**, not SW1. Use **touch swipe** or wire an external button to a free GPIO (e.g. 35) and set `-D ROUTER_BTN_SW1_GPIO=35` in `platformio.ini`.
+
+Schematics: `boards/assets/schematics/ESP32-2432S022-{MCU,LCM}-V1.0.png`.
+
 ## Build and flash
 
 [PlatformIO](https://platformio.org/) (CLI or VS Code / Cursor).

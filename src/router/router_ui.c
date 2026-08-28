@@ -589,7 +589,7 @@ static void router_ui_build_poweroff_panel(router_ui_t *ui)
 	lv_obj_align(ui->poweroff_count_lbl, LV_ALIGN_CENTER, 0, -8);
 
 	ui->poweroff_hint_lbl = lv_label_create(ui->poweroff_panel);
-	lv_label_set_text(ui->poweroff_hint_lbl, "Hold SW1 to shut down\nRelease to cancel");
+	lv_label_set_text(ui->poweroff_hint_lbl, "Hold BOOT to shut down\nRelease to cancel");
 	lv_obj_set_style_text_color(ui->poweroff_hint_lbl, COL_MUTED, LV_PART_MAIN);
 	lv_obj_set_style_text_align(ui->poweroff_hint_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
 	lv_obj_set_style_text_font(ui->poweroff_hint_lbl, &lv_font_montserrat_14, LV_PART_MAIN);
@@ -636,7 +636,7 @@ void router_ui_poweroff_hide(router_ui_t *ui)
 {
 	if (!ui || !ui->poweroff_panel)
 		return;
-	lv_label_set_text(ui->poweroff_hint_lbl, "Hold SW1 to shut down\nRelease to cancel");
+	lv_label_set_text(ui->poweroff_hint_lbl, "Hold BOOT to shut down\nRelease to cancel");
 	lv_obj_add_flag(ui->poweroff_panel, LV_OBJ_FLAG_HIDDEN);
 	ui->poweroff_visible = false;
 }

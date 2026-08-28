@@ -435,7 +435,7 @@ void setup()
     delay(5000);
 #endif
 
-	// Reset prevention — skip when router UART uses GPIO1/3 or SW1 on GPIO0
+	// Reset prevention — skip when router UART uses GPIO1/3; nav button is BOOT (GPIO0)
 #ifndef ROUTER_UI
     pinMode(0, OUTPUT);
     digitalWrite(0, HIGH);
