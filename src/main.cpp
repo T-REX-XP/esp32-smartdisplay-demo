@@ -500,7 +500,8 @@ void loop()
     auto const now = millis();
 
 #ifdef ROUTER_UI
-    while (rdcp_transport_available()) {
+    router_app_poll_button();
+    for (unsigned serial_budget = 8; serial_budget && rdcp_transport_available(); --serial_budget) {
         String line = rdcp_transport_read_line();
         if (line.length() > 0)
             router_app_on_serial_line(line.c_str());

@@ -18,8 +18,11 @@
 #ifndef ROUTER_BTN_DEBOUNCE_MS
 #define ROUTER_BTN_DEBOUNCE_MS 50
 #endif
-#ifndef ROUTER_BTN_SHORT_MS
-#define ROUTER_BTN_SHORT_MS 400
+#ifndef ROUTER_BTN_NAV_MAX_MS
+#define ROUTER_BTN_NAV_MAX_MS 900
+#endif
+#ifndef ROUTER_BTN_POWEROFF_START_MS
+#define ROUTER_BTN_POWEROFF_START_MS 900
 #endif
 #ifndef ROUTER_BTN_POWEROFF_MS
 #define ROUTER_BTN_POWEROFF_MS 5000
@@ -64,7 +67,7 @@ static void router_app_init_button(void)
 	g_btn_last_sec = 0;
 }
 
-static void router_app_poll_button(void)
+void router_app_poll_button(void)
 {
 	unsigned long now;
 	unsigned long held;
@@ -94,7 +97,7 @@ static void router_app_poll_button(void)
 		held = now - g_btn_down_ms;
 		if (router_ui_poweroff_active(g_ui))
 			router_ui_poweroff_hide(g_ui);
-		else if (held < (unsigned long)ROUTER_BTN_SHORT_MS)
+		else if (held < (unsigned long)ROUTER_BTN_NAV_MAX_MS)
 			on_nav_request("left");
 		g_btn_down = false;
 		g_btn_last_sec = 0;
@@ -105,7 +108,7 @@ static void router_app_poll_button(void)
 		return;
 
 	held = now - g_btn_down_ms;
-	if (held < (unsigned long)ROUTER_BTN_SHORT_MS)
+	if (held < (unsigned long)ROUTER_BTN_POWEROFF_START_MS)
 		return;
 
 	sec_left = ((unsigned long)ROUTER_BTN_POWEROFF_MS - held + 999UL) / 1000UL;
@@ -169,7 +172,7 @@ static void emit_version_event(void)
 	send_line(buf);
 }
 
-static void emit_version_event(void)
+static lv_scr_load_anim_t anim_for_dir(const char *dir)
 {
 	if (dir && !strcmp(dir, "right"))
 		return LV_SCR_LOAD_ANIM_MOVE_RIGHT;
@@ -420,8 +423,6 @@ void router_app_on_serial_line(const char *line)
 void router_app_loop(void)
 {
 	unsigned long now = millis();
-
-	router_app_poll_button();
 
 	if (router_ui_on_boot(g_ui))
 		return;

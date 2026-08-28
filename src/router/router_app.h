@@ -7,6 +7,7 @@
 #include <ArduinoJson.h>
 
 void router_app_init(void);
+void router_app_poll_button(void);
 void router_app_loop(void);
 void router_app_on_serial_line(const char *line);
 router_metrics_t *router_app_metrics(void);
