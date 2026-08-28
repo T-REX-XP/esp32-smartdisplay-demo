@@ -28,7 +28,9 @@ static Stream &rdcp_stream(void)
 void rdcp_transport_begin(void)
 {
 	RdcpSerial.begin(RDCP_UART_BAUD, SERIAL_8N1, RDCP_UART_RX, RDCP_UART_TX);
-	RdcpSerial.setTimeout(1000);
+	RdcpSerial.setRxBufferSize(8192);
+	RdcpSerial.setTxBufferSize(2048);
+	RdcpSerial.setTimeout(50);
 
 	unsigned long clearStart = millis();
 	while (RdcpSerial.available() && (millis() - clearStart) < 200) {
@@ -55,7 +57,10 @@ int rdcp_transport_available(void)
 
 String rdcp_transport_read_line(void)
 {
-	return rdcp_stream().readStringUntil('\n');
+	String line = rdcp_stream().readStringUntil('\n');
+
+	line.trim();
+	return line;
 }
 
 void rdcp_transport_send_line(const char *line)

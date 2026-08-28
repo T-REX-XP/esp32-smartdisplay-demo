@@ -169,17 +169,7 @@ static void emit_version_event(void)
 	send_line(buf);
 }
 
-static void emit_gesture_event(const char *dir)
-{
-	char buf[96];
-
-	snprintf(buf, sizeof(buf),
-		 "{\"v\":1,\"t\":\"evt\",\"op\":\"input\",\"data\":{\"type\":\"gesture\",\"dir\":\"%s\"}}",
-		 dir);
-	send_line(buf);
-}
-
-static lv_scr_load_anim_t anim_for_dir(const char *dir)
+static void emit_version_event(void)
 {
 	if (dir && !strcmp(dir, "right"))
 		return LV_SCR_LOAD_ANIM_MOVE_RIGHT;
@@ -321,13 +311,8 @@ static void handle_cmd(JsonObject data, const char *op)
 
 static void on_nav_request(const char *dir)
 {
-	if (g_host_linked) {
-		strncpy(g_last_gesture_dir, dir, sizeof(g_last_gesture_dir) - 1);
-		g_last_gesture_dir[sizeof(g_last_gesture_dir) - 1] = '\0';
-		emit_gesture_event(dir);
-		return;
-	}
-
+	strncpy(g_last_gesture_dir, dir, sizeof(g_last_gesture_dir) - 1);
+	g_last_gesture_dir[sizeof(g_last_gesture_dir) - 1] = '\0';
 	apply_local_nav(dir);
 }
 
