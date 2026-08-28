@@ -310,6 +310,20 @@ static void handle_cmd(JsonObject data, const char *op)
 		}
 
 		apply_host_screen(router_page_id(next), anim_for_dir(gesture_dir));
+		return;
+	}
+
+	if (!strcmp(op, "echo")) {
+		const char *text = data["text"] | "";
+		char buf[256];
+		JsonDocument out;
+
+		out["v"] = 1;
+		out["t"] = "evt";
+		out["op"] = "echo";
+		out["data"]["text"] = text;
+		serializeJson(out, buf, sizeof(buf));
+		send_line(buf);
 	}
 }
 
@@ -390,6 +404,17 @@ void router_app_on_serial_line(const char *line)
 		if (op && !strcmp(op, "version")) {
 			host_frame_received();
 			emit_version_event();
+			return;
+		}
+		if (op && !strcmp(op, "ping")) {
+			char buf[128];
+			unsigned id = doc["id"] | 0u;
+
+			host_frame_received();
+			snprintf(buf, sizeof(buf),
+				 "{\"v\":1,\"t\":\"res\",\"id\":%u,\"data\":{\"pong\":1,\"uptime_ms\":%lu}}",
+				 id, (unsigned long)millis());
+			send_line(buf);
 			return;
 		}
 	}
