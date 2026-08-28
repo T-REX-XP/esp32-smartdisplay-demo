@@ -137,14 +137,176 @@ static void test_wifi_payload(void)
 	       "qr json unescape");
 }
 
+static void test_init_defaults(void)
+{
+	router_metrics_t m;
+
+	router_data_init(&m);
+	expect(!strcmp(m.hostname, "Router"), "default hostname");
+	expect(!strcmp(m.cpu, "0"), "default cpu");
+	expect(!strcmp(m.firewall_state, "unknown"), "default firewall");
+	expect(!strcmp(m.swap_usage, "off"), "default swap off");
+	expect(m.dhcp_pool == 150, "default pool 150");
+	expect(m.link_ok == false, "link starts down");
+	expect(m.ping_ms == -1, "ping unset");
+	expect(m.hist_len == 0, "empty hist");
+}
+
+static void test_clients_payload(void)
+{
+	router_metrics_t m;
+	const char *json =
+		"{\"wifi_24\":\"1\",\"wifi_5\":\"2\",\"lan_clients\":\"3\","
+		"\"clients_total\":\"5 clients\",\"dhcp_leases\":\"5\","
+		"\"dhcp_pool\":150,\"dhcp_pct\":3,\"dhcp_summary\":\"phone, laptop, +3\"}";
+
+	router_data_init(&m);
+	router_data_apply_json(&m, json);
+	expect(!strcmp(m.wifi_24, "1"), "wifi_24");
+	expect(!strcmp(m.wifi_5, "2"), "wifi_5");
+	expect(!strcmp(m.lan_clients, "3"), "lan_clients");
+	expect(!strcmp(m.clients_total, "5 clients"), "clients_total");
+	expect(!strcmp(m.dhcp_leases, "5"), "dhcp_leases");
+	expect(!strcmp(m.dhcp_summary, "phone, laptop, +3"), "dhcp_summary");
+	expect(m.dhcp_pool == 150, "dhcp_pool");
+	expect(m.dhcp_pct == 3, "dhcp_pct");
+	expect(m.hist_len == 0, "clients does not push hist");
+}
+
+static void test_storage_payload(void)
+{
+	router_metrics_t m;
+	const char *json =
+		"{\"root_usage\":\"118M/496M\",\"root_pct\":24,\"root_dev\":\"root\","
+		"\"data_usage\":\"25.4G/28.5G\",\"data_pct\":93,\"data_kind\":\"emmc\","
+		"\"overlay_dev\":\"mmcblk0p1\",\"swap_usage\":\"256M/512M\",\"swap_pct\":50}";
+
+	router_data_init(&m);
+	router_data_apply_json(&m, json);
+	expect(!strcmp(m.root_usage, "118M/496M"), "root_usage");
+	expect(m.root_pct == 24, "root_pct");
+	expect(!strcmp(m.root_dev, "root"), "root_dev");
+	expect(!strcmp(m.data_usage, "25.4G/28.5G"), "data_usage");
+	expect(m.data_pct == 93, "data_pct");
+	expect(!strcmp(m.data_kind, "emmc"), "data_kind");
+	expect(!strcmp(m.overlay_dev, "mmcblk0p1"), "overlay_dev");
+	expect(!strcmp(m.swap_usage, "256M/512M"), "swap_usage");
+	expect(m.swap_pct == 50, "swap_pct");
+}
+
+static void test_storage_legacy_array_fallback(void)
+{
+	router_metrics_t m;
+
+	router_data_init(&m);
+	router_data_apply_json(&m,
+			       "{\"storage\":[{\"mountpoint\":\"/\",\"used_percent\":88}]}");
+	expect(m.root_pct == 88, "legacy storage[] used_percent");
+}
+
+static void test_security_payload(void)
+{
+	router_metrics_t m;
+	const char *json =
+		"{\"firewall_state\":\"lan ok · wan Rj/drop\",\"blocked_24h\":\"42+138\","
+		"\"vpn_tunnels\":\"2 (wg+ts)\",\"blocky_blocked\":42,\"banip_blocked\":138}";
+
+	router_data_init(&m);
+	router_data_apply_json(&m, json);
+	expect(!strcmp(m.firewall_state, "lan ok · wan Rj/drop"), "firewall_state");
+	expect(!strcmp(m.blocked_24h, "42+138"), "blocked_24h");
+	expect(!strcmp(m.vpn_tunnels, "2 (wg+ts)"), "vpn_tunnels");
+	expect(m.blocky_blocked == 42, "blocky_blocked");
+	expect(m.banip_blocked == 138, "banip_blocked");
+}
+
+static void test_uptime_temp_alias_and_rdcp_wrapper(void)
+{
+	router_metrics_t m;
+	const char *wrapped =
+		"{\"v\":1,\"t\":\"res\",\"id\":2,\"data\":{"
+		"\"uptime_short\":\"1h 02m\",\"time\":\"19:42\",\"temp_c\":\"48\"}}";
+
+	router_data_init(&m);
+	router_data_apply_json(&m, wrapped);
+	expect(!strcmp(m.uptime_short, "1h 02m"), "uptime_short");
+	expect(!strcmp(m.time, "19:42"), "time");
+	expect(!strcmp(m.cpu_temp, "48"), "temp_c alias");
+}
+
+static void test_page_from_id_all(void)
+{
+	expect(router_data_page_from_id("router_system") == ROUTER_PAGE_SYSTEM,
+	       "system page");
+	expect(router_data_page_from_id("router_network") == ROUTER_PAGE_NETWORK,
+	       "network page");
+	expect(router_data_page_from_id("router_clients") == ROUTER_PAGE_CLIENTS,
+	       "clients page");
+	expect(router_data_page_from_id("router_storage") == ROUTER_PAGE_STORAGE,
+	       "storage page");
+	expect(router_data_page_from_id("router_wifi") == ROUTER_PAGE_WIFI,
+	       "wifi page");
+	expect(router_data_page_from_id("router_security") == ROUTER_PAGE_SECURITY,
+	       "security page");
+	expect(router_data_page_from_id("router_boot") == ROUTER_PAGE_SYSTEM,
+	       "unknown boot falls back to system");
+	expect(router_data_page_from_id(NULL) == ROUTER_PAGE_SYSTEM, "null page id");
+}
+
+static void test_null_apply_and_empty_strings(void)
+{
+	router_metrics_t m;
+
+	router_data_init(&m);
+	router_data_apply_json(NULL, "{}");
+	router_data_apply_json(&m, NULL);
+	expect(!strcmp(m.hostname, "Router"), "null json no-op");
+
+	router_data_apply_json(&m, "{\"wan_ip\":\"\"}");
+	expect(!strcmp(m.wan_ip, "-"), "empty string becomes dash");
+}
+
+static void test_push_hist_direct(void)
+{
+	router_metrics_t m;
+
+	router_data_init(&m);
+	strncpy(m.cpu, "75", sizeof(m.cpu) - 1);
+	m.ram_pct = 33;
+	router_data_push_hist(&m);
+	expect(m.hist_len == 1, "direct push hist len");
+	expect(m.cpu_hist[0] == 75, "direct push cpu");
+	expect(m.ram_hist[0] == 33, "direct push ram");
+}
+
+static void test_cpu_hist_clamp(void)
+{
+	router_metrics_t m;
+
+	router_data_init(&m);
+	router_data_apply_json(&m, "{\"cpu\":\"150\",\"ram_pct\":200}");
+	expect(m.cpu_hist[0] == 100, "cpu hist clamped");
+	expect(m.ram_hist[0] == 100, "ram hist clamped");
+}
+
 int main(void)
 {
+	test_init_defaults();
 	test_parse_system();
 	test_cpu_temp_key_order();
 	test_hist_ring();
 	test_network_does_not_touch_uart_link_or_hist();
 	test_network_ports_and_ping();
 	test_wifi_payload();
+	test_clients_payload();
+	test_storage_payload();
+	test_storage_legacy_array_fallback();
+	test_security_payload();
+	test_uptime_temp_alias_and_rdcp_wrapper();
+	test_page_from_id_all();
+	test_null_apply_and_empty_strings();
+	test_push_hist_direct();
+	test_cpu_hist_clamp();
 
 	printf(tests_failed ? "FAILED\n" : "OK\n");
 	return tests_failed ? 1 : 0;

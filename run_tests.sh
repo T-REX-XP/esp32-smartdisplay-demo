@@ -7,6 +7,14 @@ SRC="$DIR/src/router"
 cd "$DIR"
 FAIL=0
 
+echo ">> shell: pages manifest sync"
+sh scripts/check-pages-sync.sh || FAIL=1
+
+echo ""
+echo ">> shell: mcud-version sync"
+sh scripts/check-version-sync.sh || FAIL=1
+
+echo ""
 echo ">> C: test_router_data.c"
 cc -std=c99 -Wall -Wextra -I"$SRC" -o test_router_data \
 	tests/test_router_data.c \
@@ -15,6 +23,16 @@ cc -std=c99 -Wall -Wextra -I"$SRC" -o test_router_data \
 if [ "$FAIL" -eq 0 ]; then
 	./test_router_data || FAIL=1
 	rm -f test_router_data
+fi
+
+echo ""
+echo ">> C: test_router_pages.c"
+cc -std=c99 -Wall -Wextra -I"$SRC" -o test_router_pages \
+	tests/test_router_pages.c \
+	"$SRC/router_pages.c" || FAIL=1
+if [ "$FAIL" -eq 0 ]; then
+	./test_router_pages || FAIL=1
+	rm -f test_router_pages
 fi
 
 echo ""

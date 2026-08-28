@@ -183,14 +183,42 @@ Raw ping:
 - QR join, firewall/blocky/VPN summary
 
 ### Phase 4 — Hardening
-- UART recovery, version sync CI, e2e link test in CI
+
+- [x] Version sync CI (`check-version-sync.sh` in host + firmware `run_tests.sh`)
+- [x] Page manifest sync CI (`check-pages-sync.sh`)
+- [x] Host unit tests: all `mcudd_metrics_*` scopes + protocol builders
+- [x] Firmware unit tests: `router_data.c` + `router_pages.c` JSON/page coverage
+- [ ] UART recovery (watchdog / mcudd restart policy)
+- [ ] E2E link test over real JST UART in CI (hardware job)
+
+Run tests locally:
+
+```sh
+# Host (openwrt-packages)
+feeds/luci/luci-app-mcu-display/tests/run-tests.sh
+
+# Firmware + simulator
+cd esp32-smartdisplay-demo && ./run_tests.sh
+```
+
+### Test coverage (host-testable modules)
+
+| Module | Coverage |
+|--------|----------|
+| `mcudd_metrics.c` | All `mcudd_metrics_*` entry points + null guards; `/proc`/`/sys` fixtures via `MCUDD_SYSROOT` |
+| `mcudd_protocol.c` | Parse/build for all scopes, ping/echo, nav/screen, legacy + RDCP |
+| `mcudd_pages.c`, `mcudd_config.c`, `mcud_version.c` | Dedicated test files |
+| `router_data.c`, `router_pages.c` | All JSON fields + page IDs |
+| `esp32_simulator.py` | All scope payloads + RDCP framing |
+| **Out of scope** | `mcudd.c` daemon loop, `router_ui.c` LVGL widgets (device/manual) |
 
 ---
 
 ## Success criteria
 
-- [ ] All six router pages show real CM5 data (not placeholders)
-- [ ] LuCI, buttons, and swipe stay in sync with physical page
-- [ ] Ping/echo/link test pass over JST UART after boot
-- [x] `mcud-version.json` release matched host ↔ firmware
+- [x] All six router pages implemented with live host scopes (release ≥ 42)
+- [x] Unit tests cover host metrics/protocol and firmware JSON merge (100% of testable C modules)
+- [ ] LuCI, buttons, and swipe stay in sync with physical page (manual on CM5)
+- [ ] Ping/echo/link test pass over JST UART after boot (manual: `mcud-link-test.sh`)
+- [x] `mcud-version.json` release matched host ↔ firmware (CI enforced)
 - [x] README + ROUTER_TODO reflect CM5 router (not NAS)

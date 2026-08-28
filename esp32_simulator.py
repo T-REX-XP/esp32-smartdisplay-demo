@@ -474,6 +474,8 @@ class ESP32Simulator:
                 "firewall_state": "on",
                 "blocked_24h": "12",
                 "vpn_tunnels": "0",
+                "blocky_blocked": 12,
+                "banip_blocked": 0,
             }
         elif scope == "alarms":
             payload = {"alarms": self.alarms}

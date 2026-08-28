@@ -110,6 +110,11 @@ class TestSimulatorProtocol(unittest.TestCase):
                     "clients_total"):
             self.assertIn(key, clients)
 
+        security = self.sim_json.build_scope_metrics("security")
+        for key in ("firewall_state", "blocked_24h", "vpn_tunnels",
+                    "blocky_blocked", "banip_blocked"):
+            self.assertIn(key, security)
+
     def test_rdcp_metrics_request_sends_res(self):
         ser = FakeSerial()
         self.sim_json.serial_conn = ser
