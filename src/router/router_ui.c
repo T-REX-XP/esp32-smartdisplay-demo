@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "libs/qrcode/lv_qrcode.h"
+#include "router_icons.h"
 
 #ifndef ROUTER_UI_DARK
 #define ROUTER_UI_DARK 0
@@ -105,8 +106,71 @@ struct router_ui {
 	lv_obj_t *poweroff_hint_lbl;
 	bool poweroff_visible;
 
+	lv_obj_t *nav_bar[ROUTER_PAGE_COUNT];
+
 	const router_metrics_t *last_m;
 };
+
+#define ROUTER_NAV_H 26
+
+static lv_obj_t *add_icon_label(lv_obj_t *parent, const char *icon, lv_color_t color,
+				lv_align_t align, int x, int y)
+{
+	lv_obj_t *l;
+
+	if (!icon || !icon[0])
+		return NULL;
+	l = lv_label_create(parent);
+	lv_label_set_text(l, icon);
+	lv_obj_set_style_text_font(l, &router_icon_font_16, LV_PART_MAIN);
+	lv_obj_set_style_text_color(l, color, LV_PART_MAIN);
+	lv_obj_align(l, align, x, y);
+	return l;
+}
+
+static lv_obj_t *add_montserrat_symbol(lv_obj_t *parent, const char *sym,
+				       lv_color_t color, lv_align_t align, int x,
+				       int y)
+{
+	lv_obj_t *l;
+
+	if (!sym || !sym[0])
+		return NULL;
+	l = lv_label_create(parent);
+	lv_label_set_text(l, sym);
+	lv_obj_set_style_text_font(l, &lv_font_montserrat_14, LV_PART_MAIN);
+	lv_obj_set_style_text_color(l, color, LV_PART_MAIN);
+	lv_obj_align(l, align, x, y);
+	return l;
+}
+
+static void add_page_nav(router_ui_t *ui, lv_obj_t *scr, router_page_t page)
+{
+	lv_obj_t *nav;
+	int i;
+
+	if (!ui || !scr)
+		return;
+
+	nav = lv_obj_create(scr);
+	lv_obj_set_size(nav, lv_pct(100), ROUTER_NAV_H);
+	lv_obj_align(nav, LV_ALIGN_BOTTOM_MID, 0, 0);
+	lv_obj_remove_flag(nav, LV_OBJ_FLAG_SCROLLABLE);
+	lv_obj_set_style_bg_color(nav, COL_PANEL, LV_PART_MAIN);
+	lv_obj_set_style_bg_opa(nav, LV_OPA_COVER, LV_PART_MAIN);
+	lv_obj_set_style_radius(nav, 0, LV_PART_MAIN);
+	lv_obj_set_style_border_width(nav, 0, LV_PART_MAIN);
+	lv_obj_set_style_pad_all(nav, 2, LV_PART_MAIN);
+	ui->nav_bar[page] = nav;
+
+	for (i = 0; i < ROUTER_PAGE_COUNT; i++) {
+		lv_color_t col = (i == page) ? COL_WHITE : COL_MUTED;
+		int x = -100 + i * 40;
+
+		add_icon_label(nav, router_page_icon((router_page_t)i), col,
+			       LV_ALIGN_CENTER, x, 0);
+	}
+}
 
 static lv_obj_t *make_screen_bg(void)
 {
@@ -122,9 +186,11 @@ static lv_obj_t *make_screen_bg(void)
 	return scr;
 }
 
-static lv_obj_t *add_header(lv_obj_t *parent, const char *title, const char *right)
+static lv_obj_t *add_header(lv_obj_t *parent, const char *icon, const char *title,
+			    const char *right)
 {
 	lv_obj_t *bar = lv_obj_create(parent);
+	int title_x = 4;
 
 	lv_obj_set_size(bar, lv_pct(100), 36);
 	lv_obj_align(bar, LV_ALIGN_TOP_MID, 0, 0);
@@ -135,11 +201,16 @@ static lv_obj_t *add_header(lv_obj_t *parent, const char *title, const char *rig
 	lv_obj_set_style_border_width(bar, 0, LV_PART_MAIN);
 	lv_obj_set_style_pad_all(bar, 6, LV_PART_MAIN);
 
+	if (icon && icon[0]) {
+		add_icon_label(bar, icon, COL_WHITE, LV_ALIGN_LEFT_MID, 4, 0);
+		title_x = 24;
+	}
+
 	lv_obj_t *t = lv_label_create(bar);
 	lv_label_set_text(t, title);
 	lv_obj_set_style_text_color(t, COL_WHITE, LV_PART_MAIN);
 	lv_obj_set_style_text_font(t, &lv_font_montserrat_18, LV_PART_MAIN);
-	lv_obj_align(t, LV_ALIGN_LEFT_MID, 4, 0);
+	lv_obj_align(t, LV_ALIGN_LEFT_MID, title_x, 0);
 
 	if (right && right[0]) {
 		lv_obj_t *r = lv_label_create(bar);
@@ -162,10 +233,12 @@ static lv_obj_t *add_body_label(lv_obj_t *parent, const char *text, lv_align_t a
 	return l;
 }
 
-static lv_obj_t *add_metric_card(lv_obj_t *parent, const char *title, int y,
-				 lv_obj_t **title_lbl)
+static lv_obj_t *add_metric_card(lv_obj_t *parent, const char *icon, const char *title,
+				 int y, lv_obj_t **title_lbl)
 {
 	lv_obj_t *card = lv_obj_create(parent);
+	char heading[32];
+	int title_x = 0;
 
 	lv_obj_set_size(card, lv_pct(92), 56);
 	lv_obj_align(card, LV_ALIGN_TOP_MID, 0, y);
@@ -176,11 +249,17 @@ static lv_obj_t *add_metric_card(lv_obj_t *parent, const char *title, int y,
 	lv_obj_set_style_border_width(card, 0, LV_PART_MAIN);
 	lv_obj_set_style_pad_all(card, 8, LV_PART_MAIN);
 
+	if (icon && icon[0]) {
+		add_icon_label(card, icon, COL_MUTED, LV_ALIGN_TOP_LEFT, 0, 0);
+		title_x = 20;
+	}
+
+	snprintf(heading, sizeof(heading), "%s", title);
 	lv_obj_t *t = lv_label_create(card);
-	lv_label_set_text(t, title);
+	lv_label_set_text(t, heading);
 	lv_obj_set_style_text_color(t, COL_MUTED, LV_PART_MAIN);
 	lv_obj_set_style_text_font(t, &lv_font_montserrat_14, LV_PART_MAIN);
-	lv_obj_align(t, LV_ALIGN_TOP_LEFT, 0, 0);
+	lv_obj_align(t, LV_ALIGN_TOP_LEFT, title_x, 0);
 	if (title_lbl)
 		*title_lbl = t;
 	return card;
@@ -202,6 +281,7 @@ static void build_system(router_ui_t *ui, lv_obj_t *scr)
 	ui->sys_link_lbl = add_body_label(scr, "LINK --", LV_ALIGN_TOP_RIGHT, -10, 40);
 	lv_obj_set_style_text_color(ui->sys_link_lbl, COL_MUTED, LV_PART_MAIN);
 	lv_obj_set_style_text_font(ui->sys_link_lbl, &lv_font_montserrat_14, LV_PART_MAIN);
+	add_icon_label(scr, ROUTER_ICON_REFRESH, COL_MUTED, LV_ALIGN_TOP_RIGHT, -28, 40);
 
 	ui->sys_cpu_arc = lv_arc_create(scr);
 	lv_obj_set_size(ui->sys_cpu_arc, 96, 96);
@@ -218,6 +298,7 @@ static void build_system(router_ui_t *ui, lv_obj_t *scr)
 
 	ui->sys_cpu_lbl = add_body_label(scr, "CPU 0%", LV_ALIGN_TOP_MID, 0, 86);
 	lv_obj_set_style_text_font(ui->sys_cpu_lbl, &lv_font_montserrat_14, LV_PART_MAIN);
+	add_icon_label(scr, ROUTER_ICON_MICROCHIP, COL_MUTED, LV_ALIGN_TOP_MID, -42, 86);
 
 	/* 1-minute CPU (accent) + RAM (muted) sparkline */
 	ui->sys_chart = lv_chart_create(scr);
@@ -239,7 +320,7 @@ static void build_system(router_ui_t *ui, lv_obj_t *scr)
 					      LV_CHART_AXIS_PRIMARY_Y);
 	lv_obj_add_flag(ui->sys_chart, LV_OBJ_FLAG_HIDDEN);
 
-	card = add_metric_card(scr, "MEMORY", 192, NULL);
+	card = add_metric_card(scr, ROUTER_ICON_DATABASE, "MEMORY", 192, NULL);
 	ui->sys_ram_bar = lv_bar_create(card);
 	lv_obj_set_size(ui->sys_ram_bar, lv_pct(100), 10);
 	lv_obj_align(ui->sys_ram_bar, LV_ALIGN_BOTTOM_MID, 0, -4);
@@ -252,13 +333,13 @@ static void build_system(router_ui_t *ui, lv_obj_t *scr)
 	lv_obj_set_style_text_color(ui->sys_ram_lbl, COL_TEXT, LV_PART_MAIN);
 	lv_obj_align(ui->sys_ram_lbl, LV_ALIGN_BOTTOM_LEFT, 0, -18);
 
-	ui->sys_load_lbl = add_body_label(scr, "load --", LV_ALIGN_BOTTOM_LEFT, 12, -52);
-	ui->sys_temp_lbl = add_body_label(scr, "temp --", LV_ALIGN_BOTTOM_RIGHT, -12, -52);
+	ui->sys_load_lbl = add_body_label(scr, "load --", LV_ALIGN_BOTTOM_LEFT, 12, -52 - ROUTER_NAV_H);
+	ui->sys_temp_lbl = add_body_label(scr, "temp --", LV_ALIGN_BOTTOM_RIGHT, -12, -52 - ROUTER_NAV_H);
 	lv_obj_set_style_text_color(ui->sys_load_lbl, COL_MUTED, LV_PART_MAIN);
 	lv_obj_set_style_text_color(ui->sys_temp_lbl, COL_MUTED, LV_PART_MAIN);
 
-	ui->sys_host_lbl = add_body_label(scr, "Router", LV_ALIGN_BOTTOM_LEFT, 12, -28);
-	ui->sys_uptime_lbl = add_body_label(scr, "up --", LV_ALIGN_BOTTOM_RIGHT, -12, -28);
+	ui->sys_host_lbl = add_body_label(scr, "Router", LV_ALIGN_BOTTOM_LEFT, 12, -28 - ROUTER_NAV_H);
+	ui->sys_uptime_lbl = add_body_label(scr, "up --", LV_ALIGN_BOTTOM_RIGHT, -12, -28 - ROUTER_NAV_H);
 	lv_obj_set_style_text_font(ui->sys_host_lbl, &lv_font_montserrat_14, LV_PART_MAIN);
 	lv_obj_set_style_text_font(ui->sys_uptime_lbl, &lv_font_montserrat_14, LV_PART_MAIN);
 }
@@ -281,7 +362,8 @@ static void add_port_row(lv_obj_t *parent, int y, const char *title,
 	lv_label_set_text(*name_lbl, title);
 	lv_obj_set_style_text_color(*name_lbl, COL_TEXT, LV_PART_MAIN);
 	lv_obj_set_style_text_font(*name_lbl, &lv_font_montserrat_14, LV_PART_MAIN);
-	lv_obj_align(*name_lbl, LV_ALIGN_LEFT_MID, 4, 0);
+	lv_obj_align(*name_lbl, LV_ALIGN_LEFT_MID, 20, 0);
+	add_icon_label(row, ROUTER_ICON_ETHERNET, COL_MUTED, LV_ALIGN_LEFT_MID, 2, 0);
 
 	*speed_lbl = lv_label_create(row);
 	lv_label_set_text(*speed_lbl, "--");
@@ -297,7 +379,7 @@ static void add_port_row(lv_obj_t *parent, int y, const char *title,
 
 static void build_network(router_ui_t *ui, lv_obj_t *scr)
 {
-	lv_obj_t *card = add_metric_card(scr, "WAN", 44, NULL);
+	lv_obj_t *card = add_metric_card(scr, ROUTER_ICON_ETHERNET, "WAN", 44, NULL);
 
 	ui->net_wan_lbl = lv_label_create(card);
 	lv_label_set_text(ui->net_wan_lbl, "--");
@@ -310,6 +392,8 @@ static void build_network(router_ui_t *ui, lv_obj_t *scr)
 	ui->net_ping_lbl = add_body_label(scr, "PING --", LV_ALIGN_TOP_RIGHT, -14, 108);
 	lv_obj_set_style_text_font(ui->net_rx_lbl, &lv_font_montserrat_14, LV_PART_MAIN);
 	lv_obj_set_style_text_font(ui->net_tx_lbl, &lv_font_montserrat_14, LV_PART_MAIN);
+	add_montserrat_symbol(scr, LV_SYMBOL_DOWNLOAD, COL_MUTED, LV_ALIGN_TOP_LEFT, 0, 108);
+	add_montserrat_symbol(scr, LV_SYMBOL_UPLOAD, COL_MUTED, LV_ALIGN_TOP_LEFT, 0, 128);
 
 	add_port_row(scr, 160, "eth0 WAN", &ui->net_eth0_lbl, &ui->net_eth0_speed,
 		     &ui->net_eth0_badge);
@@ -323,21 +407,21 @@ static void build_clients(router_ui_t *ui, lv_obj_t *scr)
 {
 	lv_obj_t *c;
 
-	c = add_metric_card(scr, "2.4 GHz", 52, NULL);
+	c = add_metric_card(scr, ROUTER_ICON_WIFI, "2.4 GHz", 52, NULL);
 	ui->cli_24_lbl = lv_label_create(c);
 	lv_label_set_text(ui->cli_24_lbl, "0");
 	lv_obj_set_style_text_font(ui->cli_24_lbl, &lv_font_montserrat_20, LV_PART_MAIN);
 	lv_obj_set_style_text_color(ui->cli_24_lbl, COL_ACCENT, LV_PART_MAIN);
 	lv_obj_align(ui->cli_24_lbl, LV_ALIGN_CENTER, 0, 8);
 
-	c = add_metric_card(scr, "5 GHz", 118, NULL);
+	c = add_metric_card(scr, ROUTER_ICON_WIFI, "5 GHz", 118, NULL);
 	ui->cli_5_lbl = lv_label_create(c);
 	lv_label_set_text(ui->cli_5_lbl, "0");
 	lv_obj_set_style_text_font(ui->cli_5_lbl, &lv_font_montserrat_20, LV_PART_MAIN);
 	lv_obj_set_style_text_color(ui->cli_5_lbl, COL_ACCENT, LV_PART_MAIN);
 	lv_obj_align(ui->cli_5_lbl, LV_ALIGN_CENTER, 0, 8);
 
-	c = add_metric_card(scr, "LAN / DHCP", 184, NULL);
+	c = add_metric_card(scr, ROUTER_ICON_USERS, "LAN / DHCP", 184, NULL);
 	ui->cli_lan_lbl = lv_label_create(c);
 	lv_label_set_text(ui->cli_lan_lbl, "DHCP 0/150");
 	lv_obj_set_style_text_color(ui->cli_lan_lbl, COL_TEXT, LV_PART_MAIN);
@@ -363,7 +447,7 @@ static void build_storage(router_ui_t *ui, lv_obj_t *scr)
 {
 	lv_obj_t *c;
 
-	c = add_metric_card(scr, "ROOT", 44, NULL);
+	c = add_metric_card(scr, ROUTER_ICON_HDD, "ROOT", 44, NULL);
 	ui->sto_root_lbl = lv_label_create(c);
 	lv_label_set_text(ui->sto_root_lbl, "--");
 	lv_obj_set_style_text_color(ui->sto_root_lbl, COL_TEXT, LV_PART_MAIN);
@@ -375,7 +459,7 @@ static void build_storage(router_ui_t *ui, lv_obj_t *scr)
 	lv_obj_set_style_bg_color(ui->sto_root_bar, COL_MUTED, LV_PART_MAIN);
 	lv_obj_set_style_bg_color(ui->sto_root_bar, COL_ACCENT, LV_PART_INDICATOR);
 
-	c = add_metric_card(scr, "DATA", 110, &ui->sto_data_title);
+	c = add_metric_card(scr, ROUTER_ICON_SD_CARD, "DATA", 110, &ui->sto_data_title);
 	ui->sto_data_lbl = lv_label_create(c);
 	lv_label_set_text(ui->sto_data_lbl, "--");
 	lv_obj_set_style_text_color(ui->sto_data_lbl, COL_TEXT, LV_PART_MAIN);
@@ -387,7 +471,7 @@ static void build_storage(router_ui_t *ui, lv_obj_t *scr)
 	lv_obj_set_style_bg_color(ui->sto_data_bar, COL_MUTED, LV_PART_MAIN);
 	lv_obj_set_style_bg_color(ui->sto_data_bar, COL_ACCENT, LV_PART_INDICATOR);
 
-	c = add_metric_card(scr, "SWAP", 176, NULL);
+	c = add_metric_card(scr, ROUTER_ICON_DATABASE, "SWAP", 176, NULL);
 	ui->sto_swap_lbl = lv_label_create(c);
 	lv_label_set_text(ui->sto_swap_lbl, "off");
 	lv_obj_set_style_text_color(ui->sto_swap_lbl, COL_TEXT, LV_PART_MAIN);
@@ -402,7 +486,8 @@ static void build_storage(router_ui_t *ui, lv_obj_t *scr)
 
 static void build_wifi(router_ui_t *ui, lv_obj_t *scr)
 {
-	ui->wifi_ssid_lbl = add_body_label(scr, "SSID", LV_ALIGN_TOP_LEFT, 14, 48);
+	add_icon_label(scr, ROUTER_ICON_WIFI, COL_ACCENT, LV_ALIGN_TOP_LEFT, 8, 48);
+	ui->wifi_ssid_lbl = add_body_label(scr, "SSID", LV_ALIGN_TOP_LEFT, 30, 48);
 	lv_obj_set_style_text_font(ui->wifi_ssid_lbl, &lv_font_montserrat_18, LV_PART_MAIN);
 	lv_label_set_long_mode(ui->wifi_ssid_lbl, LV_LABEL_LONG_DOT);
 	lv_obj_set_width(ui->wifi_ssid_lbl, 110);
@@ -415,16 +500,16 @@ static void build_wifi(router_ui_t *ui, lv_obj_t *scr)
 
 	ui->wifi_qr = lv_qrcode_create(scr);
 	lv_qrcode_set_size(ui->wifi_qr, 128);
-	lv_obj_align(ui->wifi_qr, LV_ALIGN_BOTTOM_RIGHT, -12, -36);
+	lv_obj_align(ui->wifi_qr, LV_ALIGN_BOTTOM_RIGHT, -12, -36 - ROUTER_NAV_H);
 	lv_qrcode_set_dark_color(ui->wifi_qr, COL_TEXT);
 	lv_qrcode_set_light_color(ui->wifi_qr, COL_QR_LIGHT);
 
-	add_body_label(scr, "Scan to join", LV_ALIGN_BOTTOM_LEFT, 14, -20);
+	add_body_label(scr, "Scan to join", LV_ALIGN_BOTTOM_LEFT, 14, -20 - ROUTER_NAV_H);
 }
 
 static void build_security(router_ui_t *ui, lv_obj_t *scr)
 {
-	lv_obj_t *c = add_metric_card(scr, "Firewall", 52, NULL);
+	lv_obj_t *c = add_metric_card(scr, ROUTER_ICON_SHIELD_ALT, "Firewall", 52, NULL);
 
 	ui->sec_fw_lbl = lv_label_create(c);
 	lv_label_set_text(ui->sec_fw_lbl, "unknown");
@@ -434,7 +519,7 @@ static void build_security(router_ui_t *ui, lv_obj_t *scr)
 	lv_obj_set_width(ui->sec_fw_lbl, lv_pct(100));
 	lv_obj_align(ui->sec_fw_lbl, LV_ALIGN_CENTER, 0, 8);
 
-	c = add_metric_card(scr, "Threats / VPN", 130, NULL);
+	c = add_metric_card(scr, ROUTER_ICON_SHIELD, "Threats / VPN", 130, NULL);
 	ui->sec_blocked_lbl = lv_label_create(c);
 	lv_label_set_text(ui->sec_blocked_lbl, "Blocked 24h: --");
 	lv_obj_align(ui->sec_blocked_lbl, LV_ALIGN_TOP_LEFT, 0, 14);
@@ -447,7 +532,7 @@ static void build_boot(router_ui_t *ui)
 {
 	lv_obj_t *scr = make_screen_bg();
 
-	add_header(scr, "BOOTING", NULL);
+	add_header(scr, ROUTER_ICON_REFRESH, "BOOTING", NULL);
 
 	ui->boot_logo = lv_image_create(scr);
 	lv_image_set_src(ui->boot_logo, &ui_img_sls_logo_png);
@@ -504,7 +589,7 @@ static void build_page(router_ui_t *ui, router_page_t page)
 	lv_obj_t *scr;
 
 	scr = make_screen_bg();
-	add_header(scr, titles[page], NULL);
+	add_header(scr, router_page_icon(page), titles[page], NULL);
 	ui->screens[page] = scr;
 
 	switch (page) {
@@ -529,6 +614,7 @@ static void build_page(router_ui_t *ui, router_page_t page)
 	default:
 		break;
 	}
+	add_page_nav(ui, scr, page);
 }
 
 router_ui_t *router_ui_create(void)
@@ -638,11 +724,16 @@ static void apply_page_stale(lv_obj_t *scr, bool stale)
 	if (!scr)
 		return;
 	n = lv_obj_get_child_count(scr);
-	/* child 0 = header; last = swipe overlay */
-	if (n < 3)
+	/* child 0 = header; last = swipe overlay; second-to-last = page nav */
+	if (n < 4)
 		return;
-	for (i = 1; i + 1 < n; i++)
+	for (i = 1; i < n; i++) {
+		if (i + 1 >= n)
+			break;
+		if (i + 2 >= n)
+			continue;
 		lv_obj_set_style_opa(lv_obj_get_child(scr, i), opa, LV_PART_MAIN);
+	}
 }
 
 static void refresh_system(router_ui_t *ui, const router_metrics_t *m, char *buf,

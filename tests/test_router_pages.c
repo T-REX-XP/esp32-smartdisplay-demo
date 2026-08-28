@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "router_icon_chars.h"
 #include "router_pages.h"
 
 static int tests_failed;
@@ -30,6 +31,8 @@ static void test_page_ids_and_scopes(void)
 		       "page id order");
 		expect(!strcmp(router_page_scope((router_page_t)i), scopes[i]),
 		       "page scope order");
+		expect(router_page_icon((router_page_t)i)[0] != '\0',
+		       "page icon defined");
 	}
 }
 
@@ -38,6 +41,10 @@ static void test_page_bounds(void)
 	expect(router_page_id((router_page_t)-1)[0] == '\0', "negative page id");
 	expect(router_page_scope((router_page_t)99)[0] == '\0',
 	       "out of range scope");
+	expect(router_page_icon((router_page_t)99)[0] == '\0',
+	       "out of range icon");
+	expect(!strcmp(router_page_icon(ROUTER_PAGE_WIFI), ROUTER_ICON_WIFI),
+	       "wifi page icon");
 }
 
 static void test_boot_id(void)
