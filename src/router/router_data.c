@@ -276,6 +276,10 @@ static void merge_object(router_metrics_t *m, const char *obj)
 		set_str(m->blocked_24h, ROUTER_STR_LEN, tmp);
 	if (json_str(obj, "vpn_tunnels", tmp, sizeof(tmp)))
 		set_str(m->vpn_tunnels, ROUTER_STR_LEN, tmp);
+	if (json_find_key(obj, "blocky_blocked"))
+		m->blocky_blocked = json_uint(obj, "blocky_blocked");
+	if (json_find_key(obj, "banip_blocked"))
+		m->banip_blocked = json_uint(obj, "banip_blocked");
 
 	/* UART link_ok is owned by firmware (RX silence), not host JSON. */
 

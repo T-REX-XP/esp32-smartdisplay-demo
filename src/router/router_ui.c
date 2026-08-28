@@ -6,16 +6,37 @@
 
 #include "libs/qrcode/lv_qrcode.h"
 
-LV_IMG_DECLARE(ui_img_pattern_png);
-LV_IMG_DECLARE(ui_img_sls_logo_png);
+#ifndef ROUTER_UI_DARK
+#define ROUTER_UI_DARK 0
+#endif
 
+LV_IMG_DECLARE(ui_img_sls_logo_png);
+#if !ROUTER_UI_DARK
+LV_IMG_DECLARE(ui_img_pattern_png);
+#endif
+
+#if ROUTER_UI_DARK
+/* LuCI luci-theme-bootstrap BootstrapDark-ish */
+#define COL_BG lv_color_hex(0x1d1d1d)
+#define COL_TEXT lv_color_hex(0xf8f9fa)
+#define COL_MUTED lv_color_hex(0x9ca3af)
+#define COL_ACCENT lv_color_hex(0x1c7ed6)
+#define COL_PANEL lv_color_hex(0x2b3035)
+#define COL_WHITE lv_color_hex(0xffffff)
+#define COL_OK lv_color_hex(0x51cf66)
+#define COL_WARN lv_color_hex(0xff6b6b)
+#define COL_QR_LIGHT COL_PANEL
+#else
+#define COL_BG lv_color_hex(0xffffff)
 #define COL_TEXT lv_color_hex(0x000746)
-#define COL_MUTED lv_color_hex(0x9C9CD9)
+#define COL_MUTED lv_color_hex(0x9c9cd9)
 #define COL_ACCENT lv_color_hex(0x293062)
-#define COL_PANEL lv_color_hex(0xE8E8F8)
-#define COL_WHITE lv_color_hex(0xFFFFFF)
-#define COL_OK lv_color_hex(0x2E7D32)
-#define COL_WARN lv_color_hex(0xC62828)
+#define COL_PANEL lv_color_hex(0xe8e8f8)
+#define COL_WHITE lv_color_hex(0xffffff)
+#define COL_OK lv_color_hex(0x2e7d32)
+#define COL_WARN lv_color_hex(0xc62828)
+#define COL_QR_LIGHT COL_WHITE
+#endif
 
 struct router_ui {
 	lv_obj_t *boot_scr;
@@ -83,6 +104,8 @@ struct router_ui {
 	lv_obj_t *poweroff_count_lbl;
 	lv_obj_t *poweroff_hint_lbl;
 	bool poweroff_visible;
+
+	const router_metrics_t *last_m;
 };
 
 static lv_obj_t *make_screen_bg(void)
@@ -90,10 +113,12 @@ static lv_obj_t *make_screen_bg(void)
 	lv_obj_t *scr = lv_obj_create(NULL);
 
 	lv_obj_remove_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
-	lv_obj_set_style_bg_color(scr, COL_WHITE, LV_PART_MAIN);
+	lv_obj_set_style_bg_color(scr, COL_BG, LV_PART_MAIN);
 	lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, LV_PART_MAIN);
+#if !ROUTER_UI_DARK
 	lv_obj_set_style_bg_image_src(scr, &ui_img_pattern_png, LV_PART_MAIN);
 	lv_obj_set_style_bg_image_tiled(scr, true, LV_PART_MAIN);
+#endif
 	return scr;
 }
 
@@ -392,7 +417,7 @@ static void build_wifi(router_ui_t *ui, lv_obj_t *scr)
 	lv_qrcode_set_size(ui->wifi_qr, 128);
 	lv_obj_align(ui->wifi_qr, LV_ALIGN_BOTTOM_RIGHT, -12, -36);
 	lv_qrcode_set_dark_color(ui->wifi_qr, COL_TEXT);
-	lv_qrcode_set_light_color(ui->wifi_qr, COL_WHITE);
+	lv_qrcode_set_light_color(ui->wifi_qr, COL_QR_LIGHT);
 
 	add_body_label(scr, "Scan to join", LV_ALIGN_BOTTOM_LEFT, 14, -20);
 }
@@ -403,8 +428,10 @@ static void build_security(router_ui_t *ui, lv_obj_t *scr)
 
 	ui->sec_fw_lbl = lv_label_create(c);
 	lv_label_set_text(ui->sec_fw_lbl, "unknown");
-	lv_obj_set_style_text_font(ui->sec_fw_lbl, &lv_font_montserrat_20, LV_PART_MAIN);
+	lv_obj_set_style_text_font(ui->sec_fw_lbl, &lv_font_montserrat_18, LV_PART_MAIN);
 	lv_obj_set_style_text_color(ui->sec_fw_lbl, COL_ACCENT, LV_PART_MAIN);
+	lv_label_set_long_mode(ui->sec_fw_lbl, LV_LABEL_LONG_DOT);
+	lv_obj_set_width(ui->sec_fw_lbl, lv_pct(100));
 	lv_obj_align(ui->sec_fw_lbl, LV_ALIGN_CENTER, 0, 8);
 
 	c = add_metric_card(scr, "Threats / VPN", 130, NULL);
@@ -571,6 +598,8 @@ void router_ui_show_page(router_ui_t *ui, router_page_t page, lv_scr_load_anim_t
 	ui->on_boot = false;
 	ui->current = page;
 	lv_screen_load_anim(ui->screens[page], anim, 200, 0, false);
+	if (ui->last_m)
+		router_ui_refresh(ui, ui->last_m);
 }
 
 router_page_t router_ui_current_page(const router_ui_t *ui)
@@ -601,15 +630,26 @@ static int cpu_value(const char *cpu)
 	return v;
 }
 
-void router_ui_refresh(router_ui_t *ui, const router_metrics_t *m)
+static void apply_page_stale(lv_obj_t *scr, bool stale)
 {
-	char buf[ROUTER_STR_LEN * 2 + 16];
-	int cpu;
+	uint32_t i, n;
+	lv_opa_t opa = stale ? LV_OPA_50 : LV_OPA_COVER;
 
-	if (!ui || !m)
+	if (!scr)
 		return;
+	n = lv_obj_get_child_count(scr);
+	/* child 0 = header; last = swipe overlay */
+	if (n < 3)
+		return;
+	for (i = 1; i + 1 < n; i++)
+		lv_obj_set_style_opa(lv_obj_get_child(scr, i), opa, LV_PART_MAIN);
+}
 
-	cpu = cpu_value(m->cpu);
+static void refresh_system(router_ui_t *ui, const router_metrics_t *m, char *buf,
+			   size_t buf_len)
+{
+	int cpu = cpu_value(m->cpu);
+
 	if (ui->sys_cpu_arc) {
 		lv_obj_set_style_arc_color(ui->sys_cpu_arc, cpu_arc_color(cpu),
 					   LV_PART_INDICATOR);
@@ -617,7 +657,7 @@ void router_ui_refresh(router_ui_t *ui, const router_metrics_t *m)
 		lv_arc_set_angles(ui->sys_cpu_arc, 135, 135 + (cpu * 270 / 100));
 	}
 	if (ui->sys_cpu_lbl) {
-		snprintf(buf, sizeof(buf), "CPU %s%%", m->cpu);
+		snprintf(buf, buf_len, "CPU %s%%", m->cpu);
 		lv_label_set_text(ui->sys_cpu_lbl, buf);
 	}
 	if (ui->sys_link_lbl) {
@@ -631,6 +671,7 @@ void router_ui_refresh(router_ui_t *ui, const router_metrics_t *m)
 			lv_label_set_text(ui->sys_link_lbl, "LINK --");
 			lv_obj_set_style_text_color(ui->sys_link_lbl, COL_MUTED, LV_PART_MAIN);
 		}
+		lv_obj_set_style_opa(ui->sys_link_lbl, LV_OPA_COVER, LV_PART_MAIN);
 	}
 	if (ui->sys_chart && ui->sys_ser_cpu && ui->sys_ser_ram) {
 		unsigned i;
@@ -667,50 +708,53 @@ void router_ui_refresh(router_ui_t *ui, const router_metrics_t *m)
 		lv_bar_set_value(ui->sys_ram_bar, m->ram_pct, LV_ANIM_OFF);
 	if (ui->sys_ram_lbl) {
 		if (m->ram_used[0] && m->ram_used[0] != '-')
-			snprintf(buf, sizeof(buf), "RAM %u%% (%s)", m->ram_pct,
-				 m->ram_used);
+			snprintf(buf, buf_len, "RAM %u%% (%s)", m->ram_pct, m->ram_used);
 		else
-			snprintf(buf, sizeof(buf), "RAM %u%%", m->ram_pct);
+			snprintf(buf, buf_len, "RAM %u%%", m->ram_pct);
 		lv_label_set_text(ui->sys_ram_lbl, buf);
 	}
 	if (ui->sys_load_lbl) {
 		if (m->load_short[0] && m->load_short[0] != '-')
-			snprintf(buf, sizeof(buf), "load %s", m->load_short);
+			snprintf(buf, buf_len, "load %s", m->load_short);
 		else
-			snprintf(buf, sizeof(buf), "load --");
+			snprintf(buf, buf_len, "load --");
 		lv_label_set_text(ui->sys_load_lbl, buf);
 	}
 	if (ui->sys_temp_lbl) {
 		if (m->cpu_temp[0] && m->cpu_temp[0] != '-')
-			snprintf(buf, sizeof(buf), "temp %sC", m->cpu_temp);
+			snprintf(buf, buf_len, "temp %sC", m->cpu_temp);
 		else
-			snprintf(buf, sizeof(buf), "temp --");
+			snprintf(buf, buf_len, "temp --");
 		lv_label_set_text(ui->sys_temp_lbl, buf);
 	}
 	if (ui->sys_host_lbl)
 		lv_label_set_text(ui->sys_host_lbl, m->hostname);
 	if (ui->sys_uptime_lbl) {
-		snprintf(buf, sizeof(buf), "up %s", m->uptime_short);
+		snprintf(buf, buf_len, "up %s", m->uptime_short);
 		lv_label_set_text(ui->sys_uptime_lbl, buf);
 	}
+}
 
+static void refresh_network(router_ui_t *ui, const router_metrics_t *m, char *buf,
+			    size_t buf_len)
+{
 	if (ui->net_wan_lbl)
 		lv_label_set_text(ui->net_wan_lbl, m->wan_ip);
 	if (ui->net_rx_lbl) {
-		snprintf(buf, sizeof(buf), "RX %s", m->rx_rate);
+		snprintf(buf, buf_len, "RX %s", m->rx_rate);
 		lv_label_set_text(ui->net_rx_lbl, buf);
 	}
 	if (ui->net_tx_lbl) {
-		snprintf(buf, sizeof(buf), "TX %s", m->tx_rate);
+		snprintf(buf, buf_len, "TX %s", m->tx_rate);
 		lv_label_set_text(ui->net_tx_lbl, buf);
 	}
 	if (ui->net_ping_lbl) {
 		if (m->ping_ms < 0)
-			snprintf(buf, sizeof(buf), "PING --");
+			snprintf(buf, buf_len, "PING --");
 		else if (!m->ping_ok)
-			snprintf(buf, sizeof(buf), "PING fail");
+			snprintf(buf, buf_len, "PING fail");
 		else
-			snprintf(buf, sizeof(buf), "PING %d ms", m->ping_ms);
+			snprintf(buf, buf_len, "PING %d ms", m->ping_ms);
 		lv_label_set_text(ui->net_ping_lbl, buf);
 		lv_obj_set_style_text_color(ui->net_ping_lbl,
 					    m->ping_ok ? COL_OK : COL_MUTED, LV_PART_MAIN);
@@ -737,7 +781,11 @@ void router_ui_refresh(router_ui_t *ui, const router_metrics_t *m)
 		lv_obj_set_style_text_color(ui->net_eth2_badge,
 					    m->eth2_up ? COL_OK : COL_WARN, LV_PART_MAIN);
 	}
+}
 
+static void refresh_clients(router_ui_t *ui, const router_metrics_t *m, char *buf,
+			    size_t buf_len)
+{
 	if (ui->cli_24_lbl)
 		lv_label_set_text(ui->cli_24_lbl, m->wifi_24);
 	if (ui->cli_5_lbl)
@@ -745,7 +793,7 @@ void router_ui_refresh(router_ui_t *ui, const router_metrics_t *m)
 	if (ui->cli_lan_lbl) {
 		unsigned pool = m->dhcp_pool ? m->dhcp_pool : 150;
 
-		snprintf(buf, sizeof(buf), "DHCP %s/%u",
+		snprintf(buf, buf_len, "DHCP %s/%u",
 			 m->dhcp_leases[0] ? m->dhcp_leases : "0", pool);
 		lv_label_set_text(ui->cli_lan_lbl, buf);
 	}
@@ -761,13 +809,16 @@ void router_ui_refresh(router_ui_t *ui, const router_metrics_t *m)
 					  m->dhcp_pct >= 85 ? COL_WARN : COL_ACCENT,
 					  LV_PART_INDICATOR);
 	}
+}
 
+static void refresh_storage(router_ui_t *ui, const router_metrics_t *m, char *buf,
+			    size_t buf_len)
+{
 	if (ui->sto_root_lbl) {
 		if (m->root_dev[0] && m->root_dev[0] != '-')
-			snprintf(buf, sizeof(buf), "%s  %s", m->root_usage,
-				 m->root_dev);
+			snprintf(buf, buf_len, "%s  %s", m->root_usage, m->root_dev);
 		else
-			snprintf(buf, sizeof(buf), "%s", m->root_usage);
+			snprintf(buf, buf_len, "%s", m->root_usage);
 		lv_label_set_text(ui->sto_root_lbl, buf);
 	}
 	if (ui->sto_root_bar) {
@@ -796,12 +847,11 @@ void router_ui_refresh(router_ui_t *ui, const router_metrics_t *m)
 	if (ui->sto_data_lbl) {
 		if (!strcmp(m->data_kind, "none") || !m->data_usage[0] ||
 		    m->data_usage[0] == '-')
-			snprintf(buf, sizeof(buf), "none");
+			snprintf(buf, buf_len, "none");
 		else if (m->overlay_dev[0] && m->overlay_dev[0] != '-')
-			snprintf(buf, sizeof(buf), "%s  %s", m->data_usage,
-				 m->overlay_dev);
+			snprintf(buf, buf_len, "%s  %s", m->data_usage, m->overlay_dev);
 		else
-			snprintf(buf, sizeof(buf), "%s", m->data_usage);
+			snprintf(buf, buf_len, "%s", m->data_usage);
 		lv_label_set_text(ui->sto_data_lbl, buf);
 	}
 	if (ui->sto_data_bar) {
@@ -819,13 +869,17 @@ void router_ui_refresh(router_ui_t *ui, const router_metrics_t *m)
 					  m->swap_pct >= 85 ? COL_WARN : COL_ACCENT,
 					  LV_PART_INDICATOR);
 	}
+}
 
+static void refresh_wifi(router_ui_t *ui, const router_metrics_t *m, char *buf,
+			 size_t buf_len)
+{
 	if (ui->wifi_ssid_lbl)
 		lv_label_set_text(ui->wifi_ssid_lbl, m->wifi_ssid);
 	if (ui->wifi_enc_lbl)
 		lv_label_set_text(ui->wifi_enc_lbl, m->wifi_enc);
 	if (ui->wifi_state_lbl) {
-		snprintf(buf, sizeof(buf), "AP %s", m->wifi_ap_state);
+		snprintf(buf, buf_len, "AP %s", m->wifi_ap_state);
 		lv_label_set_text(ui->wifi_state_lbl, buf);
 		if (!strcmp(m->wifi_ap_state, "up"))
 			lv_obj_set_style_text_color(ui->wifi_state_lbl, COL_OK, LV_PART_MAIN);
@@ -840,17 +894,66 @@ void router_ui_refresh(router_ui_t *ui, const router_metrics_t *m)
 	} else if (ui->wifi_qr) {
 		lv_obj_add_flag(ui->wifi_qr, LV_OBJ_FLAG_HIDDEN);
 	}
+}
 
+static void refresh_security(router_ui_t *ui, const router_metrics_t *m, char *buf,
+			     size_t buf_len)
+{
 	if (ui->sec_fw_lbl)
 		lv_label_set_text(ui->sec_fw_lbl, m->firewall_state);
 	if (ui->sec_blocked_lbl) {
-		snprintf(buf, sizeof(buf), "Blocked 24h: %s", m->blocked_24h);
+		if (strchr(m->blocked_24h, '+'))
+			snprintf(buf, buf_len, "24h %s", m->blocked_24h);
+		else
+			snprintf(buf, buf_len, "Blocked 24h: %s", m->blocked_24h);
 		lv_label_set_text(ui->sec_blocked_lbl, buf);
 	}
 	if (ui->sec_vpn_lbl) {
-		snprintf(buf, sizeof(buf), "VPN: %s", m->vpn_tunnels);
+		snprintf(buf, buf_len, "VPN %s", m->vpn_tunnels);
 		lv_label_set_text(ui->sec_vpn_lbl, buf);
 	}
+}
+
+void router_ui_refresh(router_ui_t *ui, const router_metrics_t *m)
+{
+	char buf[ROUTER_STR_LEN * 2 + 16];
+	bool stale;
+
+	if (!ui || !m)
+		return;
+
+	ui->last_m = m;
+	if (ui->on_boot)
+		return;
+
+	switch (ui->current) {
+	case ROUTER_PAGE_SYSTEM:
+		refresh_system(ui, m, buf, sizeof(buf));
+		break;
+	case ROUTER_PAGE_NETWORK:
+		refresh_network(ui, m, buf, sizeof(buf));
+		break;
+	case ROUTER_PAGE_CLIENTS:
+		refresh_clients(ui, m, buf, sizeof(buf));
+		break;
+	case ROUTER_PAGE_STORAGE:
+		refresh_storage(ui, m, buf, sizeof(buf));
+		break;
+	case ROUTER_PAGE_WIFI:
+		refresh_wifi(ui, m, buf, sizeof(buf));
+		break;
+	case ROUTER_PAGE_SECURITY:
+		refresh_security(ui, m, buf, sizeof(buf));
+		break;
+	default:
+		break;
+	}
+
+	/* Host gone: keep last numbers, dim them (demo / last-known). */
+	stale = !m->link_ok && m->last_rx_ms != 0;
+	apply_page_stale(ui->screens[ui->current], stale);
+	if (ui->sys_link_lbl)
+		lv_obj_set_style_opa(ui->sys_link_lbl, LV_OPA_COVER, LV_PART_MAIN);
 }
 
 static void router_ui_build_poweroff_panel(router_ui_t *ui)

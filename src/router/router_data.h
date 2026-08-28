@@ -71,6 +71,8 @@ typedef struct {
 	char firewall_state[ROUTER_STR_LEN];
 	char blocked_24h[ROUTER_STR_LEN];
 	char vpn_tunnels[ROUTER_STR_LEN];
+	unsigned blocky_blocked;
+	unsigned banip_blocked;
 
 	bool link_ok;
 	unsigned long last_rx_ms;

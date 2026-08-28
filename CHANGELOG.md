@@ -1,5 +1,17 @@
 # ESP32 Smart Display Demo — Changelog
 
+## 2026-08-28 (firmware UI)
+
+### Added
+
+- **Dark theme** — `ROUTER_UI_DARK=1` on `esp32-2432S022C-router` (LuCI BootstrapDark-style surfaces). Light palette: `-D ROUTER_UI_DARK=0`.
+- **Stale metrics** — after UART `LINK LOST`, last values stay on screen at 50% opacity.
+
+### Changed
+
+- `router_ui_refresh` updates only the visible page; switching pages reapplies cached metrics.
+- Nav GPIO flag renamed to `ROUTER_BTN_BOOT_GPIO` (`ROUTER_BTN_SW1_GPIO` still accepted).
+
 ## 2026-08-28 (Wi-Fi AP screen)
 
 ### Added

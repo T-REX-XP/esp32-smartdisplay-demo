@@ -23,7 +23,7 @@ Keep in sync: `src/router/router_pages.c`, `/etc/mcud/pages.json`, `mcud-version
 | 3 | `router_clients` | `clients` | **Done** — Wi-Fi per band, DHCP summary/pool |
 | 4 | `router_storage` | `storage` | **Done** — root, eMMC/overlay/extroot, swap |
 | 5 | `router_wifi` | `wifi` | **Done** — SSID, encryption, AP state, WPA QR |
-| 6 | `router_security` | `security` | Stub — firewall, blocky/banIP, VPN |
+| 6 | `router_security` | `security` | **Done** — fw4 zones, blocky/banIP 24h, VPN count |
 
 Navigation: **BOOT** tap (GPIO0), touch swipe, CM5 **MaskROM/USERKEY**, LuCI **Services → MCU Display**, or host FIFO / raw RDCP `cmd`.
 
@@ -110,9 +110,15 @@ Host payload (`mcudd` scope `system`):
 
 ## 6. Security screen (`router_security`)
 
-- [ ] Firewall4 zone summary
-- [ ] Blocky / banIP blocked count (24 h)
-- [ ] Tailscale / WireGuard / AmneziaWG tunnel count
+### Done
+- [x] Firewall4 zone summary from `/etc/config/firewall` (`lan ok · wan Rj/drop`)
+- [x] Blocky / banIP blocked count (24h) — Blocky `/api/stats`, banIP `element_count`
+- [x] Tailscale / WireGuard / AmneziaWG tunnel count (`wg` + `awg` + `ts`)
+
+### Payload
+```json
+{"firewall_state":"lan ok · wan Rj/drop","blocked_24h":"0","vpn_tunnels":"0","blocky_blocked":0,"banip_blocked":0}
+```
 
 ---
 
@@ -149,7 +155,7 @@ Raw ping:
 
 - [x] Live network throughput in `mcudd_metrics_network`
 - [x] Wi-Fi AP SSID/encryption/QR in `mcudd_metrics_wifi`
-- [ ] Security metrics from blocky/banIP counters
+- [x] Security metrics from blocky/banIP counters and fw4 zones
 - [x] Rate-limit FIFO nav when ESP32 RX saturated (drop nav/screen while screen cmd pending or within 450 ms of TX; 2.5 s ack timeout)
 - [x] Do not update `/tmp/mcud_active_screen` until screen evt ack
 
@@ -157,10 +163,10 @@ Raw ping:
 
 ## Firmware backlog
 
-- [ ] Rename `ROUTER_BTN_SW1_GPIO` → `ROUTER_BTN_BOOT_GPIO` in docs/flags
-- [ ] Scope-aware `router_ui_refresh` (update only visible page widgets)
-- [ ] Dark theme variant (Bootstrap parity with LuCI)
-- [ ] Demo mode on MCU when host offline (show last metrics grayed)
+- [x] Rename `ROUTER_BTN_SW1_GPIO` → `ROUTER_BTN_BOOT_GPIO` in docs/flags
+- [x] Scope-aware `router_ui_refresh` (update only visible page widgets)
+- [x] Dark theme variant (Bootstrap parity with LuCI) — `ROUTER_UI_DARK=1` on router env
+- [x] Demo mode on MCU when host offline (show last metrics grayed)
 
 ---
 

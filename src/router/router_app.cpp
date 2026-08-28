@@ -12,9 +12,14 @@
 
 #define ROUTER_SWIPE_MIN_PX 40
 
-#ifndef ROUTER_BTN_SW1_GPIO
-/* ESP32-2432S022: SW1 (IP5306 KEY) is not on ESP32 — use BOOT (GPIO0). Override for external GPIO. */
-#define ROUTER_BTN_SW1_GPIO 0
+#ifndef ROUTER_BTN_BOOT_GPIO
+#ifdef ROUTER_BTN_SW1_GPIO
+/* Deprecated alias — prefer ROUTER_BTN_BOOT_GPIO. */
+#define ROUTER_BTN_BOOT_GPIO ROUTER_BTN_SW1_GPIO
+#else
+/* ESP32-2432S022: silkscreen SW1 is IP5306 KEY (not ESP32). Default: BOOT (GPIO0). */
+#define ROUTER_BTN_BOOT_GPIO 0
+#endif
 #endif
 #ifndef ROUTER_BTN_DEBOUNCE_MS
 #define ROUTER_BTN_DEBOUNCE_MS 50
@@ -48,9 +53,9 @@ static unsigned g_btn_last_sec;
 static void send_line(const char *line);
 static void on_nav_request(const char *dir);
 
-static bool sw1_pressed(void)
+static bool boot_btn_pressed(void)
 {
-	return digitalRead(ROUTER_BTN_SW1_GPIO) == LOW;
+	return digitalRead(ROUTER_BTN_BOOT_GPIO) == LOW;
 }
 
 static void emit_poweroff_request(void)
@@ -60,9 +65,9 @@ static void emit_poweroff_request(void)
 
 static void router_app_init_button(void)
 {
-	pinMode(ROUTER_BTN_SW1_GPIO, INPUT_PULLUP);
+	pinMode(ROUTER_BTN_BOOT_GPIO, INPUT_PULLUP);
 	g_btn_ready = true;
-	g_btn_down = sw1_pressed();
+	g_btn_down = boot_btn_pressed();
 	g_btn_down_ms = millis();
 	g_btn_poweroff_sent = false;
 	g_btn_last_sec = 0;
@@ -85,7 +90,7 @@ void router_app_poll_button(void)
 		return;
 	last_check = now;
 
-	pressed = sw1_pressed();
+	pressed = boot_btn_pressed();
 
 	if (pressed && !g_btn_down) {
 		g_btn_down = true;

@@ -47,7 +47,7 @@ LuCI / USERKEY / MaskROM
 | **SW1** | IP5306 **KEY** (battery/power IC) | **Not readable** by ESP32 — toggles boost/charge LEDs only |
 | **RST** | EN reset | Hardware reset only |
 
-Navigation in firmware uses **BOOT (GPIO0)**, not SW1. Use **touch swipe** or wire an external button to a free GPIO (e.g. 35) and set `-D ROUTER_BTN_SW1_GPIO=35` in `platformio.ini`.
+Navigation in firmware uses **BOOT (GPIO0)**, not SW1. Use **touch swipe** or wire an external button to a free GPIO (e.g. 35) and set `-D ROUTER_BTN_BOOT_GPIO=35` in `platformio.ini`. Router firmware defaults to a **dark** theme (`ROUTER_UI_DARK=1`, LuCI BootstrapDark-style); pass `-D ROUTER_UI_DARK=0` for the light palette.
 
 Schematics: `boards/assets/schematics/ESP32-2432S022-{MCU,LCM}-V1.0.png`.
 
