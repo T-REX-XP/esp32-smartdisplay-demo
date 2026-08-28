@@ -15,7 +15,9 @@ This tree is a fork of [rzeldent/esp32-smartdisplay-demo](https://github.com/rze
 | CM5 | `/etc/mcud/pages.json` | Screen IDs and scopes — keep in sync with `src/router/router_pages.c` |
 | Version | `mcud-version.json` | Shared with the host package (`stack` / `release` / `rdcp`) |
 
-Current version (from `mcud-version.json`): **stack 1.0.0**, **release 31**, **RDCP 1**.
+Current version (from `mcud-version.json`): **stack 1.0.0**, **release 32**, **RDCP 1**.
+
+Backlog: [ROUTER_TODO.md](ROUTER_TODO.md).
 
 ```text
 CM5 ttyS2  <── 115200 8N1 ──>  ESP32 UART2 (GPIO3 RX / GPIO1 TX)
@@ -75,7 +77,7 @@ Swipe left/right (or host `cmd` frames) cycles pages. IDs must match `/etc/mcud/
 | Screen ID | Scope | Content |
 |-----------|-------|---------|
 | `router_boot` | — | Splash + boot progress (`push` `op=boot`) |
-| `router_system` | `system` | Hostname, CPU, RAM, uptime |
+| `router_system` | `system` | Hostname, CPU %, RAM bar + used, load, temp, uptime |
 | `router_network` | `network` | WAN IP, RX/TX, ping |
 | `router_clients` | `clients` | Wi-Fi / LAN / DHCP counts |
 | `router_storage` | `storage` | Root / data usage |

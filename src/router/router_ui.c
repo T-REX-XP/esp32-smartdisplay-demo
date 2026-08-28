@@ -34,6 +34,8 @@ struct router_ui {
 	lv_obj_t *sys_ram_lbl;
 	lv_obj_t *sys_host_lbl;
 	lv_obj_t *sys_uptime_lbl;
+	lv_obj_t *sys_load_lbl;
+	lv_obj_t *sys_temp_lbl;
 
 	lv_obj_t *net_wan_lbl;
 	lv_obj_t *net_rx_lbl;
@@ -139,26 +141,36 @@ static lv_obj_t *add_metric_card(lv_obj_t *parent, const char *title, int y)
 	return card;
 }
 
+static lv_color_t cpu_arc_color(int pct)
+{
+	if (pct >= 85)
+		return COL_WARN;
+	if (pct >= 60)
+		return lv_color_hex(0xF9A825);
+	return COL_OK;
+}
+
 static void build_system(router_ui_t *ui, lv_obj_t *scr)
 {
 	lv_obj_t *card;
 
 	ui->sys_cpu_arc = lv_arc_create(scr);
-	lv_obj_set_size(ui->sys_cpu_arc, 140, 140);
-	lv_obj_align(ui->sys_cpu_arc, LV_ALIGN_CENTER, 0, -10);
+	lv_obj_set_size(ui->sys_cpu_arc, 120, 120);
+	lv_obj_align(ui->sys_cpu_arc, LV_ALIGN_TOP_MID, 0, 48);
 	lv_arc_set_range(ui->sys_cpu_arc, 0, 100);
 	lv_arc_set_value(ui->sys_cpu_arc, 0);
 	lv_arc_set_bg_angles(ui->sys_cpu_arc, 135, 45);
 	lv_arc_set_angles(ui->sys_cpu_arc, 135, 135);
-	lv_obj_set_style_arc_color(ui->sys_cpu_arc, lv_color_hex(0xE63431), LV_PART_INDICATOR);
+	lv_obj_remove_flag(ui->sys_cpu_arc, LV_OBJ_FLAG_CLICKABLE);
+	lv_obj_set_style_arc_color(ui->sys_cpu_arc, COL_OK, LV_PART_INDICATOR);
 	lv_obj_set_style_arc_width(ui->sys_cpu_arc, 10, LV_PART_INDICATOR);
 	lv_obj_set_style_arc_color(ui->sys_cpu_arc, COL_MUTED, LV_PART_MAIN);
 	lv_obj_set_style_arc_width(ui->sys_cpu_arc, 6, LV_PART_MAIN);
 
-	ui->sys_cpu_lbl = add_body_label(scr, "CPU 0%", LV_ALIGN_CENTER, 0, -10);
+	ui->sys_cpu_lbl = add_body_label(scr, "CPU 0%", LV_ALIGN_TOP_MID, 0, 102);
 	lv_obj_set_style_text_font(ui->sys_cpu_lbl, &lv_font_montserrat_18, LV_PART_MAIN);
 
-	card = add_metric_card(scr, "RAM", 200);
+	card = add_metric_card(scr, "MEMORY", 168);
 	ui->sys_ram_bar = lv_bar_create(card);
 	lv_obj_set_size(ui->sys_ram_bar, lv_pct(100), 10);
 	lv_obj_align(ui->sys_ram_bar, LV_ALIGN_BOTTOM_MID, 0, -4);
@@ -167,12 +179,17 @@ static void build_system(router_ui_t *ui, lv_obj_t *scr)
 	lv_obj_set_style_bg_color(ui->sys_ram_bar, COL_ACCENT, LV_PART_INDICATOR);
 
 	ui->sys_ram_lbl = lv_label_create(card);
-	lv_label_set_text(ui->sys_ram_lbl, "--");
+	lv_label_set_text(ui->sys_ram_lbl, "RAM --");
 	lv_obj_set_style_text_color(ui->sys_ram_lbl, COL_TEXT, LV_PART_MAIN);
 	lv_obj_align(ui->sys_ram_lbl, LV_ALIGN_BOTTOM_LEFT, 0, -18);
 
-	ui->sys_host_lbl = add_body_label(scr, "Router", LV_ALIGN_BOTTOM_LEFT, 12, -36);
-	ui->sys_uptime_lbl = add_body_label(scr, "up --", LV_ALIGN_BOTTOM_RIGHT, -12, -36);
+	ui->sys_load_lbl = add_body_label(scr, "load --", LV_ALIGN_BOTTOM_LEFT, 12, -52);
+	ui->sys_temp_lbl = add_body_label(scr, "temp --", LV_ALIGN_BOTTOM_RIGHT, -12, -52);
+	lv_obj_set_style_text_color(ui->sys_load_lbl, COL_MUTED, LV_PART_MAIN);
+	lv_obj_set_style_text_color(ui->sys_temp_lbl, COL_MUTED, LV_PART_MAIN);
+
+	ui->sys_host_lbl = add_body_label(scr, "Router", LV_ALIGN_BOTTOM_LEFT, 12, -28);
+	ui->sys_uptime_lbl = add_body_label(scr, "up --", LV_ALIGN_BOTTOM_RIGHT, -12, -28);
 	lv_obj_set_style_text_font(ui->sys_host_lbl, &lv_font_montserrat_14, LV_PART_MAIN);
 	lv_obj_set_style_text_font(ui->sys_uptime_lbl, &lv_font_montserrat_14, LV_PART_MAIN);
 }
@@ -483,6 +500,8 @@ void router_ui_refresh(router_ui_t *ui, const router_metrics_t *m)
 
 	cpu = cpu_value(m->cpu);
 	if (ui->sys_cpu_arc) {
+		lv_obj_set_style_arc_color(ui->sys_cpu_arc, cpu_arc_color(cpu),
+					   LV_PART_INDICATOR);
 		lv_arc_set_value(ui->sys_cpu_arc, cpu);
 		lv_arc_set_angles(ui->sys_cpu_arc, 135, 135 + (cpu * 270 / 100));
 	}
@@ -493,8 +512,26 @@ void router_ui_refresh(router_ui_t *ui, const router_metrics_t *m)
 	if (ui->sys_ram_bar)
 		lv_bar_set_value(ui->sys_ram_bar, m->ram_pct, LV_ANIM_OFF);
 	if (ui->sys_ram_lbl) {
-		snprintf(buf, sizeof(buf), "RAM %u%%", m->ram_pct);
+		if (m->ram_used[0] && m->ram_used[0] != '-')
+			snprintf(buf, sizeof(buf), "RAM %u%% (%s)", m->ram_pct,
+				 m->ram_used);
+		else
+			snprintf(buf, sizeof(buf), "RAM %u%%", m->ram_pct);
 		lv_label_set_text(ui->sys_ram_lbl, buf);
+	}
+	if (ui->sys_load_lbl) {
+		if (m->load_short[0] && m->load_short[0] != '-')
+			snprintf(buf, sizeof(buf), "load %s", m->load_short);
+		else
+			snprintf(buf, sizeof(buf), "load --");
+		lv_label_set_text(ui->sys_load_lbl, buf);
+	}
+	if (ui->sys_temp_lbl) {
+		if (m->cpu_temp[0] && m->cpu_temp[0] != '-')
+			snprintf(buf, sizeof(buf), "temp %sC", m->cpu_temp);
+		else
+			snprintf(buf, sizeof(buf), "temp --");
+		lv_label_set_text(ui->sys_temp_lbl, buf);
 	}
 	if (ui->sys_host_lbl)
 		lv_label_set_text(ui->sys_host_lbl, m->hostname);

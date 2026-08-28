@@ -18,7 +18,8 @@ int main(void)
 	router_metrics_t m;
 	const char *json =
 		"{\"v\":1,\"t\":\"res\",\"id\":3,\"data\":{"
-		"\"hostname\":\"cm5\",\"cpu\":\"42\",\"ram_pct\":61,"
+		"\"hostname\":\"cm5\",\"cpu\":\"42\",\"ram_pct\":61,\"ram_used\":\"512M\","
+		"\"load_short\":\"0.42\",\"cpu_temp\":\"--\","
 		"\"wan_ip\":\"10.0.0.2\",\"wifi_ssid\":\"OpenWrt\","
 		"\"wifi_qr\":\"WIFI:S:OpenWrt;;\",\"firewall_state\":\"on\"}}";
 
@@ -28,6 +29,8 @@ int main(void)
 	expect(!strcmp(m.hostname, "cm5"), "hostname");
 	expect(!strcmp(m.cpu, "42"), "cpu");
 	expect(m.ram_pct == 61, "ram_pct");
+	expect(!strcmp(m.ram_used, "512M"), "ram_used");
+	expect(!strcmp(m.load_short, "0.42"), "load_short");
 	expect(!strcmp(m.wan_ip, "10.0.0.2"), "wan_ip");
 	expect(!strcmp(m.wifi_ssid, "OpenWrt"), "wifi_ssid");
 	expect(strstr(m.wifi_qr, "OpenWrt") != NULL, "wifi_qr");
