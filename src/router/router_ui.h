@@ -27,6 +27,10 @@ void router_ui_refresh(router_ui_t *ui, const router_metrics_t *metrics);
 lv_obj_t *router_ui_screen(const router_ui_t *ui, router_page_t page);
 lv_obj_t *router_ui_boot_screen(router_ui_t *ui);
 void router_ui_install_swipe(lv_obj_t *scr, lv_event_cb_t cb);
+void router_ui_poweroff_show(router_ui_t *ui, unsigned seconds_left);
+void router_ui_poweroff_shutting_down(router_ui_t *ui);
+void router_ui_poweroff_hide(router_ui_t *ui);
+bool router_ui_poweroff_active(const router_ui_t *ui);
 
 #ifdef __cplusplus
 }

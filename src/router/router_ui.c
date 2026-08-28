@@ -58,6 +58,12 @@ struct router_ui {
 	lv_obj_t *sec_fw_lbl;
 	lv_obj_t *sec_blocked_lbl;
 	lv_obj_t *sec_vpn_lbl;
+
+	lv_obj_t *poweroff_panel;
+	lv_obj_t *poweroff_title_lbl;
+	lv_obj_t *poweroff_count_lbl;
+	lv_obj_t *poweroff_hint_lbl;
+	bool poweroff_visible;
 };
 
 static lv_obj_t *make_screen_bg(void)
@@ -395,6 +401,8 @@ void router_ui_destroy(router_ui_t *ui)
 		return;
 	if (ui->boot_scr)
 		lv_obj_delete(ui->boot_scr);
+	if (ui->poweroff_panel)
+		lv_obj_delete(ui->poweroff_panel);
 	for (i = 0; i < ROUTER_PAGE_COUNT; i++) {
 		if (ui->screens[i])
 			lv_obj_delete(ui->screens[i]);
@@ -551,4 +559,89 @@ void router_ui_refresh(router_ui_t *ui, const router_metrics_t *m)
 		snprintf(buf, sizeof(buf), "VPN: %s", m->vpn_tunnels);
 		lv_label_set_text(ui->sec_vpn_lbl, buf);
 	}
+}
+
+static void router_ui_build_poweroff_panel(router_ui_t *ui)
+{
+	char count_buf[8];
+
+	if (!ui || ui->poweroff_panel)
+		return;
+
+	ui->poweroff_panel = lv_obj_create(lv_layer_top());
+	lv_obj_set_size(ui->poweroff_panel, lv_pct(100), lv_pct(100));
+	lv_obj_set_style_bg_color(ui->poweroff_panel, lv_color_hex(0x1A1A2E), LV_PART_MAIN);
+	lv_obj_set_style_bg_opa(ui->poweroff_panel, LV_OPA_90, LV_PART_MAIN);
+	lv_obj_set_style_border_width(ui->poweroff_panel, 0, LV_PART_MAIN);
+	lv_obj_remove_flag(ui->poweroff_panel, LV_OBJ_FLAG_SCROLLABLE);
+
+	ui->poweroff_title_lbl = lv_label_create(ui->poweroff_panel);
+	lv_label_set_text(ui->poweroff_title_lbl, "Turn off device");
+	lv_obj_set_style_text_color(ui->poweroff_title_lbl, COL_WHITE, LV_PART_MAIN);
+	lv_obj_set_style_text_font(ui->poweroff_title_lbl, &lv_font_montserrat_20, LV_PART_MAIN);
+	lv_obj_align(ui->poweroff_title_lbl, LV_ALIGN_TOP_MID, 0, 48);
+
+	ui->poweroff_count_lbl = lv_label_create(ui->poweroff_panel);
+	snprintf(count_buf, sizeof(count_buf), "%u", 5u);
+	lv_label_set_text(ui->poweroff_count_lbl, count_buf);
+	lv_obj_set_style_text_color(ui->poweroff_count_lbl, COL_WARN, LV_PART_MAIN);
+	lv_obj_set_style_text_font(ui->poweroff_count_lbl, &lv_font_montserrat_20, LV_PART_MAIN);
+	lv_obj_align(ui->poweroff_count_lbl, LV_ALIGN_CENTER, 0, -8);
+
+	ui->poweroff_hint_lbl = lv_label_create(ui->poweroff_panel);
+	lv_label_set_text(ui->poweroff_hint_lbl, "Hold SW1 to shut down\nRelease to cancel");
+	lv_obj_set_style_text_color(ui->poweroff_hint_lbl, COL_MUTED, LV_PART_MAIN);
+	lv_obj_set_style_text_align(ui->poweroff_hint_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+	lv_obj_set_style_text_font(ui->poweroff_hint_lbl, &lv_font_montserrat_14, LV_PART_MAIN);
+	lv_obj_align(ui->poweroff_hint_lbl, LV_ALIGN_BOTTOM_MID, 0, -36);
+
+	lv_obj_add_flag(ui->poweroff_panel, LV_OBJ_FLAG_HIDDEN);
+	ui->poweroff_visible = false;
+}
+
+void router_ui_poweroff_show(router_ui_t *ui, unsigned seconds_left)
+{
+	char buf[8];
+
+	if (!ui)
+		return;
+	if (!ui->poweroff_panel)
+		router_ui_build_poweroff_panel(ui);
+	if (!ui->poweroff_panel)
+		return;
+	if (seconds_left < 1)
+		seconds_left = 1;
+	snprintf(buf, sizeof(buf), "%u", seconds_left);
+	lv_label_set_text(ui->poweroff_count_lbl, buf);
+	lv_obj_remove_flag(ui->poweroff_panel, LV_OBJ_FLAG_HIDDEN);
+	ui->poweroff_visible = true;
+}
+
+void router_ui_poweroff_shutting_down(router_ui_t *ui)
+{
+	if (!ui)
+		return;
+	if (!ui->poweroff_panel)
+		router_ui_build_poweroff_panel(ui);
+	if (!ui->poweroff_panel)
+		return;
+	lv_label_set_text(ui->poweroff_title_lbl, "Turn off device");
+	lv_label_set_text(ui->poweroff_count_lbl, "—");
+	lv_label_set_text(ui->poweroff_hint_lbl, "Shutting down…");
+	lv_obj_remove_flag(ui->poweroff_panel, LV_OBJ_FLAG_HIDDEN);
+	ui->poweroff_visible = true;
+}
+
+void router_ui_poweroff_hide(router_ui_t *ui)
+{
+	if (!ui || !ui->poweroff_panel)
+		return;
+	lv_label_set_text(ui->poweroff_hint_lbl, "Hold SW1 to shut down\nRelease to cancel");
+	lv_obj_add_flag(ui->poweroff_panel, LV_OBJ_FLAG_HIDDEN);
+	ui->poweroff_visible = false;
+}
+
+bool router_ui_poweroff_active(const router_ui_t *ui)
+{
+	return ui && ui->poweroff_visible;
 }

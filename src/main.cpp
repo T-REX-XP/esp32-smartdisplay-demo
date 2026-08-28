@@ -435,21 +435,23 @@ void setup()
     delay(5000);
 #endif
 
-    // IMMEDIATELY disable auto-reset before any serial operations
+	// Reset prevention — skip when router UART uses GPIO1/3 or SW1 on GPIO0
+#ifndef ROUTER_UI
     pinMode(0, OUTPUT);
     digitalWrite(0, HIGH);
-    
-    // Additional reset prevention - set multiple GPIOs if needed
     pinMode(1, OUTPUT);
-    digitalWrite(1, LOW);  // TX pin low initially    // Minimal delay for reset prevention
+    digitalWrite(1, LOW);
     delay(100);
+#endif
 
     Serial.begin(115200);
     Serial.setTimeout(1000);
     Serial.setDebugOutput(false);
 
     // Keep GPIO0 HIGH throughout initialization
+#ifndef ROUTER_UI
     digitalWrite(0, HIGH);
+#endif
 
     // Quick stabilization - much shorter delay
     delay(500);

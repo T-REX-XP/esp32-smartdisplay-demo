@@ -12,6 +12,19 @@
 
 #define ROUTER_SWIPE_MIN_PX 40
 
+#ifndef ROUTER_BTN_SW1_GPIO
+#define ROUTER_BTN_SW1_GPIO 0
+#endif
+#ifndef ROUTER_BTN_DEBOUNCE_MS
+#define ROUTER_BTN_DEBOUNCE_MS 50
+#endif
+#ifndef ROUTER_BTN_SHORT_MS
+#define ROUTER_BTN_SHORT_MS 400
+#endif
+#ifndef ROUTER_BTN_POWEROFF_MS
+#define ROUTER_BTN_POWEROFF_MS 5000
+#endif
+
 static router_ui_t *g_ui;
 static router_metrics_t g_metrics;
 static unsigned g_req_id;
@@ -21,6 +34,97 @@ static bool g_host_linked;
 static lv_point_t g_swipe_start;
 static bool g_swipe_active;
 static char g_last_gesture_dir[8];
+
+static bool g_btn_ready;
+static bool g_btn_down;
+static bool g_btn_poweroff_sent;
+static unsigned long g_btn_down_ms;
+static unsigned g_btn_last_sec;
+
+static void send_line(const char *line);
+static void on_nav_request(const char *dir);
+
+static bool sw1_pressed(void)
+{
+	return digitalRead(ROUTER_BTN_SW1_GPIO) == LOW;
+}
+
+static void emit_poweroff_request(void)
+{
+	send_line("{\"v\":1,\"t\":\"req\",\"op\":\"poweroff\",\"data\":{\"source\":\"sw1\"}}");
+}
+
+static void router_app_init_button(void)
+{
+	pinMode(ROUTER_BTN_SW1_GPIO, INPUT_PULLUP);
+	g_btn_ready = true;
+	g_btn_down = sw1_pressed();
+	g_btn_down_ms = millis();
+	g_btn_poweroff_sent = false;
+	g_btn_last_sec = 0;
+}
+
+static void router_app_poll_button(void)
+{
+	unsigned long now;
+	unsigned long held;
+	unsigned sec_left;
+	bool pressed;
+
+	if (!g_btn_ready)
+		router_app_init_button();
+
+	now = millis();
+	static unsigned long last_check;
+
+	if (now - last_check < (unsigned long)ROUTER_BTN_DEBOUNCE_MS)
+		return;
+	last_check = now;
+
+	pressed = sw1_pressed();
+
+	if (pressed && !g_btn_down) {
+		g_btn_down = true;
+		g_btn_down_ms = now;
+		g_btn_poweroff_sent = false;
+		g_btn_last_sec = 0;
+	}
+
+	if (!pressed && g_btn_down) {
+		held = now - g_btn_down_ms;
+		if (router_ui_poweroff_active(g_ui))
+			router_ui_poweroff_hide(g_ui);
+		else if (held < (unsigned long)ROUTER_BTN_SHORT_MS)
+			on_nav_request("left");
+		g_btn_down = false;
+		g_btn_last_sec = 0;
+		return;
+	}
+
+	if (!pressed || g_btn_poweroff_sent)
+		return;
+
+	held = now - g_btn_down_ms;
+	if (held < (unsigned long)ROUTER_BTN_SHORT_MS)
+		return;
+
+	sec_left = ((unsigned long)ROUTER_BTN_POWEROFF_MS - held + 999UL) / 1000UL;
+	if (sec_left < 1)
+		sec_left = 1;
+	if (sec_left > (unsigned)ROUTER_BTN_POWEROFF_MS / 1000U)
+		sec_left = (unsigned)ROUTER_BTN_POWEROFF_MS / 1000U;
+
+	if (sec_left != g_btn_last_sec) {
+		g_btn_last_sec = sec_left;
+		router_ui_poweroff_show(g_ui, sec_left);
+	}
+
+	if (held >= (unsigned long)ROUTER_BTN_POWEROFF_MS) {
+		router_ui_poweroff_shutting_down(g_ui);
+		emit_poweroff_request();
+		g_btn_poweroff_sent = true;
+	}
+}
 
 static void send_line(const char *line)
 {
@@ -273,6 +377,7 @@ void router_app_init(void)
 
 	emit_screen_event("router_boot");
 	emit_version_event();
+	router_app_init_button();
 }
 
 void router_app_on_serial_line(const char *line)
@@ -331,7 +436,12 @@ void router_app_loop(void)
 {
 	unsigned long now = millis();
 
+	router_app_poll_button();
+
 	if (router_ui_on_boot(g_ui))
+		return;
+
+	if (router_ui_poweroff_active(g_ui))
 		return;
 
 	router_page_t page = router_ui_current_page(g_ui);
