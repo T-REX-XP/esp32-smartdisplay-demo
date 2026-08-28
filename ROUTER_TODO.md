@@ -168,5 +168,5 @@ Raw ping:
 - [ ] All six router pages show real CM5 data (not placeholders)
 - [ ] LuCI, buttons, and swipe stay in sync with physical page
 - [ ] Ping/echo/link test pass over JST UART after boot
-- [ ] `mcud-version.json` release matched host ↔ firmware
-- [ ] README + ROUTER_TODO reflect CM5 router (not NAS)
+- [x] `mcud-version.json` release matched host ↔ firmware
+- [x] README + ROUTER_TODO reflect CM5 router (not NAS)
