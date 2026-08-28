@@ -10,10 +10,13 @@ extern "C" {
 #endif
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "router_pages.h"
 
 #define ROUTER_STR_LEN 48
+/* ~60s of history at 1.5s system poll interval */
+#define ROUTER_HIST_LEN 40
 
 typedef struct {
 	char hostname[ROUTER_STR_LEN];
@@ -53,10 +56,16 @@ typedef struct {
 
 	bool link_ok;
 	unsigned long last_rx_ms;
+
+	uint8_t cpu_hist[ROUTER_HIST_LEN];
+	uint8_t ram_hist[ROUTER_HIST_LEN];
+	unsigned hist_len;
+	unsigned hist_head;
 } router_metrics_t;
 
 void router_data_init(router_metrics_t *m);
 void router_data_apply_json(router_metrics_t *m, const char *json);
+void router_data_push_hist(router_metrics_t *m);
 router_page_t router_data_page_from_id(const char *screen_id);
 
 #ifdef __cplusplus

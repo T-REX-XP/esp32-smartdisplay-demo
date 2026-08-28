@@ -18,7 +18,7 @@ Keep in sync: `src/router/router_pages.c`, `/etc/mcud/pages.json`, `mcud-version
 | # | Screen ID | Scope | Status |
 |---|-----------|-------|--------|
 | — | `router_boot` | — | Done — splash + boot progress |
-| 1 | `router_system` | `system` | **In progress** — CPU, RAM, uptime, load |
+| 1 | `router_system` | `system` | **Done** — CPU% (/proc/stat), RAM, load, sparkline, link LED; temp when thermal present |
 | 2 | `router_network` | `network` | Stub — WAN IP, link; RX/TX/ping pending |
 | 3 | `router_clients` | `clients` | Stub — DHCP lease counts |
 | 4 | `router_storage` | `storage` | Stub — root/data bars |
@@ -42,18 +42,18 @@ Host payload (`mcudd` scope `system`):
 - [x] Parse metrics in `router_data.c`
 - [x] Host collects hostname, load→CPU%, RAM, uptime via `mcudd_metrics_system`
 - [x] Page polls every 1.5 s when host-linked
-
-### This sprint
 - [x] Show RAM used text (`512M`) alongside percent
 - [x] Show load average (`load_short`)
-- [x] Show CPU temp row (placeholder `--` until CM5 thermal source)
+- [x] Show CPU temp row (hwmon / thermal_zone when present)
 - [x] CPU arc color by load (green / amber / red)
+- [x] Real CPU utilization from `/proc/stat` deltas
+- [x] CM5 thermal zone / hwmon for `cpu_temp` (falls back to `--` if absent)
+- [x] 1-minute CPU+RAM sparkline (40-sample ring buffer)
+- [x] Link indicator (`LINK OK` / `LINK LOST` after 5 s UART silence)
 
 ### Backlog
-- [ ] Real CPU utilization (not load-average proxy) from `/proc/stat`
-- [ ] CM5 thermal zone for `cpu_temp` (RK3588 hwmon)
-- [ ] Optional 1-minute sparkline (CPU/RAM history ring buffer)
-- [ ] Link indicator when host UART silent > N seconds
+- [ ] Enable RK3588 thermal driver in CM5 kernel if zones missing
+- [ ] Real CPU sparkline legend / dual-axis polish
 
 ---
 

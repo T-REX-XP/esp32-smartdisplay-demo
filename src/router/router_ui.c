@@ -36,6 +36,10 @@ struct router_ui {
 	lv_obj_t *sys_uptime_lbl;
 	lv_obj_t *sys_load_lbl;
 	lv_obj_t *sys_temp_lbl;
+	lv_obj_t *sys_link_lbl;
+	lv_obj_t *sys_chart;
+	lv_chart_series_t *sys_ser_cpu;
+	lv_chart_series_t *sys_ser_ram;
 
 	lv_obj_t *net_wan_lbl;
 	lv_obj_t *net_rx_lbl;
@@ -154,23 +158,46 @@ static void build_system(router_ui_t *ui, lv_obj_t *scr)
 {
 	lv_obj_t *card;
 
+	ui->sys_link_lbl = add_body_label(scr, "LINK --", LV_ALIGN_TOP_RIGHT, -10, 40);
+	lv_obj_set_style_text_color(ui->sys_link_lbl, COL_MUTED, LV_PART_MAIN);
+	lv_obj_set_style_text_font(ui->sys_link_lbl, &lv_font_montserrat_14, LV_PART_MAIN);
+
 	ui->sys_cpu_arc = lv_arc_create(scr);
-	lv_obj_set_size(ui->sys_cpu_arc, 120, 120);
-	lv_obj_align(ui->sys_cpu_arc, LV_ALIGN_TOP_MID, 0, 48);
+	lv_obj_set_size(ui->sys_cpu_arc, 96, 96);
+	lv_obj_align(ui->sys_cpu_arc, LV_ALIGN_TOP_MID, 0, 44);
 	lv_arc_set_range(ui->sys_cpu_arc, 0, 100);
 	lv_arc_set_value(ui->sys_cpu_arc, 0);
 	lv_arc_set_bg_angles(ui->sys_cpu_arc, 135, 45);
 	lv_arc_set_angles(ui->sys_cpu_arc, 135, 135);
 	lv_obj_remove_flag(ui->sys_cpu_arc, LV_OBJ_FLAG_CLICKABLE);
 	lv_obj_set_style_arc_color(ui->sys_cpu_arc, COL_OK, LV_PART_INDICATOR);
-	lv_obj_set_style_arc_width(ui->sys_cpu_arc, 10, LV_PART_INDICATOR);
+	lv_obj_set_style_arc_width(ui->sys_cpu_arc, 9, LV_PART_INDICATOR);
 	lv_obj_set_style_arc_color(ui->sys_cpu_arc, COL_MUTED, LV_PART_MAIN);
-	lv_obj_set_style_arc_width(ui->sys_cpu_arc, 6, LV_PART_MAIN);
+	lv_obj_set_style_arc_width(ui->sys_cpu_arc, 5, LV_PART_MAIN);
 
-	ui->sys_cpu_lbl = add_body_label(scr, "CPU 0%", LV_ALIGN_TOP_MID, 0, 102);
-	lv_obj_set_style_text_font(ui->sys_cpu_lbl, &lv_font_montserrat_18, LV_PART_MAIN);
+	ui->sys_cpu_lbl = add_body_label(scr, "CPU 0%", LV_ALIGN_TOP_MID, 0, 86);
+	lv_obj_set_style_text_font(ui->sys_cpu_lbl, &lv_font_montserrat_14, LV_PART_MAIN);
 
-	card = add_metric_card(scr, "MEMORY", 168);
+	/* 1-minute CPU (accent) + RAM (muted) sparkline */
+	ui->sys_chart = lv_chart_create(scr);
+	lv_obj_set_size(ui->sys_chart, lv_pct(92), 36);
+	lv_obj_align(ui->sys_chart, LV_ALIGN_TOP_MID, 0, 148);
+	lv_obj_set_style_bg_color(ui->sys_chart, COL_PANEL, LV_PART_MAIN);
+	lv_obj_set_style_bg_opa(ui->sys_chart, LV_OPA_COVER, LV_PART_MAIN);
+	lv_obj_set_style_radius(ui->sys_chart, 8, LV_PART_MAIN);
+	lv_obj_set_style_border_width(ui->sys_chart, 0, LV_PART_MAIN);
+	lv_obj_set_style_pad_all(ui->sys_chart, 4, LV_PART_MAIN);
+	lv_chart_set_type(ui->sys_chart, LV_CHART_TYPE_LINE);
+	lv_chart_set_point_count(ui->sys_chart, ROUTER_HIST_LEN);
+	lv_chart_set_axis_range(ui->sys_chart, LV_CHART_AXIS_PRIMARY_Y, 0, 100);
+	lv_chart_set_div_line_count(ui->sys_chart, 0, 0);
+	lv_obj_set_style_size(ui->sys_chart, 0, 0, LV_PART_INDICATOR);
+	ui->sys_ser_cpu = lv_chart_add_series(ui->sys_chart, COL_ACCENT,
+					      LV_CHART_AXIS_PRIMARY_Y);
+	ui->sys_ser_ram = lv_chart_add_series(ui->sys_chart, COL_MUTED,
+					      LV_CHART_AXIS_PRIMARY_Y);
+
+	card = add_metric_card(scr, "MEMORY", 192);
 	ui->sys_ram_bar = lv_bar_create(card);
 	lv_obj_set_size(ui->sys_ram_bar, lv_pct(100), 10);
 	lv_obj_align(ui->sys_ram_bar, LV_ALIGN_BOTTOM_MID, 0, -4);
@@ -508,6 +535,36 @@ void router_ui_refresh(router_ui_t *ui, const router_metrics_t *m)
 	if (ui->sys_cpu_lbl) {
 		snprintf(buf, sizeof(buf), "CPU %s%%", m->cpu);
 		lv_label_set_text(ui->sys_cpu_lbl, buf);
+	}
+	if (ui->sys_link_lbl) {
+		if (m->link_ok) {
+			lv_label_set_text(ui->sys_link_lbl, "LINK OK");
+			lv_obj_set_style_text_color(ui->sys_link_lbl, COL_OK, LV_PART_MAIN);
+		} else {
+			lv_label_set_text(ui->sys_link_lbl, "LINK LOST");
+			lv_obj_set_style_text_color(ui->sys_link_lbl, COL_WARN, LV_PART_MAIN);
+		}
+	}
+	if (ui->sys_chart && ui->sys_ser_cpu && ui->sys_ser_ram && m->hist_len > 0) {
+		unsigned i;
+		unsigned start = (m->hist_head + ROUTER_HIST_LEN - m->hist_len) %
+				 ROUTER_HIST_LEN;
+
+		for (i = 0; i < ROUTER_HIST_LEN; i++) {
+			if (i < m->hist_len) {
+				unsigned idx = (start + i) % ROUTER_HIST_LEN;
+				lv_chart_set_series_value_by_id(ui->sys_chart, ui->sys_ser_cpu, i,
+								 m->cpu_hist[idx]);
+				lv_chart_set_series_value_by_id(ui->sys_chart, ui->sys_ser_ram, i,
+								 m->ram_hist[idx]);
+			} else {
+				lv_chart_set_series_value_by_id(ui->sys_chart, ui->sys_ser_cpu, i,
+								 LV_CHART_POINT_NONE);
+				lv_chart_set_series_value_by_id(ui->sys_chart, ui->sys_ser_ram, i,
+								 LV_CHART_POINT_NONE);
+			}
+		}
+		lv_chart_refresh(ui->sys_chart);
 	}
 	if (ui->sys_ram_bar)
 		lv_bar_set_value(ui->sys_ram_bar, m->ram_pct, LV_ANIM_OFF);

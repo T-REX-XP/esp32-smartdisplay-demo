@@ -64,9 +64,32 @@ void router_data_init(router_metrics_t *m)
 	memset(m, 0, sizeof(*m));
 	set_str(m->hostname, ROUTER_STR_LEN, "Router");
 	set_str(m->cpu, ROUTER_STR_LEN, "0");
+	set_str(m->cpu_temp, ROUTER_STR_LEN, NULL);
 	set_str(m->wan_ip, ROUTER_STR_LEN, NULL);
 	set_str(m->wifi_ssid, ROUTER_STR_LEN, NULL);
 	set_str(m->firewall_state, ROUTER_STR_LEN, "unknown");
+	m->link_ok = false;
+}
+
+void router_data_push_hist(router_metrics_t *m)
+{
+	unsigned idx;
+	int cpu;
+
+	if (!m)
+		return;
+	cpu = atoi(m->cpu);
+	if (cpu < 0)
+		cpu = 0;
+	if (cpu > 100)
+		cpu = 100;
+
+	idx = m->hist_head % ROUTER_HIST_LEN;
+	m->cpu_hist[idx] = (uint8_t)cpu;
+	m->ram_hist[idx] = (uint8_t)(m->ram_pct > 100 ? 100 : m->ram_pct);
+	m->hist_head = (m->hist_head + 1) % ROUTER_HIST_LEN;
+	if (m->hist_len < ROUTER_HIST_LEN)
+		m->hist_len++;
 }
 
 static void merge_object(router_metrics_t *m, const char *obj)
@@ -89,6 +112,10 @@ static void merge_object(router_metrics_t *m, const char *obj)
 		set_str(m->load_short, ROUTER_STR_LEN, tmp);
 	if (strstr(obj, "\"ram_pct\""))
 		m->ram_pct = json_uint(obj, "ram_pct");
+
+	/* Push history when system fields are present in this payload. */
+	if (strstr(obj, "\"cpu\"") || strstr(obj, "\"ram_pct\""))
+		router_data_push_hist(m);
 
 	if (json_str(obj, "wan_ip", tmp, sizeof(tmp)))
 		set_str(m->wan_ip, ROUTER_STR_LEN, tmp);

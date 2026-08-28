@@ -130,6 +130,10 @@ void router_app_poll_button(void)
 	}
 }
 
+#ifndef ROUTER_LINK_TIMEOUT_MS
+#define ROUTER_LINK_TIMEOUT_MS 5000
+#endif
+
 static void send_line(const char *line)
 {
 	rdcp_transport_send_line(line);
@@ -138,6 +142,14 @@ static void send_line(const char *line)
 static void host_frame_received(void)
 {
 	g_host_linked = true;
+	g_last_rx_ms = millis();
+	g_metrics.last_rx_ms = g_last_rx_ms;
+	if (!g_metrics.link_ok) {
+		g_metrics.link_ok = true;
+		router_ui_refresh(g_ui, &g_metrics);
+	} else {
+		g_metrics.link_ok = true;
+	}
 }
 
 static void send_scope_request(const char *scope)
@@ -457,6 +469,13 @@ void router_app_loop(void)
 
 	if (router_ui_poweroff_active(g_ui))
 		return;
+
+	if (g_host_linked && g_last_rx_ms != 0 &&
+	    (now - g_last_rx_ms) > ROUTER_LINK_TIMEOUT_MS &&
+	    g_metrics.link_ok) {
+		g_metrics.link_ok = false;
+		router_ui_refresh(g_ui, &g_metrics);
+	}
 
 	router_page_t page = router_ui_current_page(g_ui);
 	unsigned interval = (page == ROUTER_PAGE_SYSTEM) ? 1500u : 2000u;
