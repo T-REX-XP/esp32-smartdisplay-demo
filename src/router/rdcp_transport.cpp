@@ -2,10 +2,17 @@
 
 #ifdef RDCP_TRANSPORT_UART2
 #ifndef RDCP_UART_RX
+#if defined(ESP32_2432S022C) || defined(ESP32_2432S022N)
+/* 2432S022: GPIO16=LCD DC, GPIO17=LCD CS — RDCP uses P1 JST (GPIO3 RX / GPIO1 TX). */
+#define RDCP_UART_RX 3
+#define RDCP_UART_TX 1
+#else
 #define RDCP_UART_RX 16
+#define RDCP_UART_TX 17
+#endif
 #endif
 #ifndef RDCP_UART_TX
-#define RDCP_UART_TX 17
+#define RDCP_UART_TX 1
 #endif
 #ifndef RDCP_UART_BAUD
 #define RDCP_UART_BAUD 115200
