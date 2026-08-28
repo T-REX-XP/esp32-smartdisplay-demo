@@ -8,6 +8,7 @@
 #include <vector>
 
 #ifdef ROUTER_UI
+#include "router/rdcp_transport.h"
 #include "router/router_app.h"
 #else
 #include <ui/ui.h>
@@ -479,6 +480,10 @@ void setup()
 
 #ifdef ROUTER_UI
     log_i("Router UI mode");
+#ifdef RDCP_TRANSPORT_UART2
+    log_i("RDCP transport: UART2 RX=%d TX=%d @ 115200", RDCP_UART_RX, RDCP_UART_TX);
+#endif
+    rdcp_transport_begin();
     router_app_init();
 #else
     ui_init();
@@ -493,8 +498,8 @@ void loop()
     auto const now = millis();
 
 #ifdef ROUTER_UI
-    while (Serial.available()) {
-        String line = Serial.readStringUntil('\n');
+    while (rdcp_transport_available()) {
+        String line = rdcp_transport_read_line();
         if (line.length() > 0)
             router_app_on_serial_line(line.c_str());
     }

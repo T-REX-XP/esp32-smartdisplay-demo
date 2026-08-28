@@ -1,5 +1,6 @@
 #include "router_app.h"
 
+#include "rdcp_transport.h"
 #include "router_pages.h"
 #include "router_ui.h"
 
@@ -22,9 +23,7 @@ static char g_last_gesture_dir[8];
 
 static void send_line(const char *line)
 {
-	if (!line)
-		return;
-	Serial.println(line);
+	rdcp_transport_send_line(line);
 }
 
 static void host_frame_received(void)
