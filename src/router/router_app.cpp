@@ -3,6 +3,7 @@
 #include "rdcp_transport.h"
 #include "router_pages.h"
 #include "router_ui.h"
+#include "mcud_version.h"
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
@@ -50,6 +51,17 @@ static void emit_screen_event(const char *screen_id)
 	snprintf(buf, sizeof(buf),
 		 "{\"v\":1,\"t\":\"evt\",\"op\":\"screen\",\"data\":{\"screen\":\"%s\",\"action\":\"loaded\"}}",
 		 screen_id);
+	send_line(buf);
+}
+
+static void emit_version_event(void)
+{
+	char buf[192];
+
+	snprintf(buf, sizeof(buf),
+		 "{\"v\":1,\"t\":\"evt\",\"op\":\"version\",\"data\":{\"stack\":\"%s\",\"release\":%u,\"component\":\"%s\",\"rdcp\":%u}}",
+		 MCUD_STACK_VERSION, (unsigned)MCUD_STACK_RELEASE,
+		 MCUD_COMPONENT_FIRMWARE, (unsigned)MCUD_RDCP_VERSION);
 	send_line(buf);
 }
 
@@ -254,6 +266,7 @@ void router_app_init(void)
 		attach_swipe(router_ui_screen(g_ui, (router_page_t)i));
 
 	emit_screen_event("router_boot");
+	emit_version_event();
 }
 
 void router_app_on_serial_line(const char *line)
@@ -272,17 +285,31 @@ void router_app_on_serial_line(const char *line)
 		return;
 	}
 
+	if (!strcmp(t, "req")) {
+		const char *op = doc["op"];
+		if (op && !strcmp(op, "version")) {
+			host_frame_received();
+			emit_version_event();
+			return;
+		}
+	}
+
+	if (!strcmp(t, "push")) {
+		const char *op = doc["op"];
+		if (op && !strcmp(op, "hello")) {
+			host_frame_received();
+			emit_version_event();
+		}
+		handle_push(doc["data"].as<JsonObject>(), doc["op"]);
+		return;
+	}
+
 	if (!strcmp(t, "res")) {
 		char buf[2048];
 		JsonObject data = doc["data"].as<JsonObject>();
 
 		serializeJson(data, buf, sizeof(buf));
 		apply_metrics_json(buf);
-		return;
-	}
-
-	if (!strcmp(t, "push")) {
-		handle_push(doc["data"].as<JsonObject>(), doc["op"]);
 		return;
 	}
 
