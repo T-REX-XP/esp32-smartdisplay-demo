@@ -197,6 +197,12 @@ static void handle_cmd(JsonObject data, const char *op)
 		router_page_t next = page;
 		const char *gesture_dir = dir;
 
+		if (router_ui_on_boot(g_ui)) {
+			apply_host_screen(router_page_id(ROUTER_PAGE_SYSTEM),
+					  anim_for_dir(!strcmp(dir, "prev") ? "right" : "left"));
+			return;
+		}
+
 		if (!strcmp(dir, "prev") || !strcmp(dir, "right")) {
 			next = (router_page_t)((page + ROUTER_PAGE_COUNT - 1) % ROUTER_PAGE_COUNT);
 			gesture_dir = "right";
@@ -205,8 +211,7 @@ static void handle_cmd(JsonObject data, const char *op)
 			gesture_dir = "left";
 		}
 
-		if (!router_ui_on_boot(g_ui))
-			apply_host_screen(router_page_id(next), anim_for_dir(gesture_dir));
+		apply_host_screen(router_page_id(next), anim_for_dir(gesture_dir));
 	}
 }
 
