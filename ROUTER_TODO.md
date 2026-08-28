@@ -20,9 +20,9 @@ Keep in sync: `src/router/router_pages.c`, `/etc/mcud/pages.json`, `mcud-version
 | — | `router_boot` | — | Done — splash + boot progress |
 | 1 | `router_system` | `system` | **Done** — CPU% (/proc/stat), RAM, load, sparkline, link LED; temp when thermal present |
 | 2 | `router_network` | `network` | **Done** — WAN IP, RX/TX, ping, eth0/1/2 link badges |
-| 3 | `router_clients` | `clients` | Stub — DHCP lease counts |
+| 3 | `router_clients` | `clients` | **Done** — Wi-Fi per band, DHCP summary/pool |
 | 4 | `router_storage` | `storage` | **Done** — root, eMMC/overlay/extroot, swap |
-| 5 | `router_wifi` | `wifi` | Stub — SSID, AP state, QR |
+| 5 | `router_wifi` | `wifi` | **Done** — SSID, encryption, AP state, WPA QR |
 | 6 | `router_security` | `security` | Stub — firewall, blocky/banIP, VPN |
 
 Navigation: **BOOT** tap (GPIO0), touch swipe, CM5 **MaskROM/USERKEY**, LuCI **Services → MCU Display**, or host FIFO / raw RDCP `cmd`.
@@ -68,9 +68,15 @@ Host payload (`mcudd` scope `system`):
 
 ## 3. Clients screen (`router_clients`)
 
-- [ ] Wi-Fi station counts per band (when USB AP enabled)
-- [ ] DHCP lease list summary from `dnsmasq.leases`
-- [ ] DHCP pool usage bar (accurate pct)
+### Done
+- [x] Wi-Fi station counts per band (`iwinfo` AP assoclist → `wifi_24` / `wifi_5`)
+- [x] DHCP lease summary from `/tmp/dhcp.leases` (`dhcp_summary` hostnames)
+- [x] DHCP pool usage bar (`dhcp.lan.limit` → `dhcp_pct`)
+
+### Payload
+```json
+{"wifi_24":"0","wifi_5":"2","lan_clients":"3","clients_total":"5 clients","dhcp_leases":"5","dhcp_pool":150,"dhcp_pct":3,"dhcp_summary":"phone, laptop, +3"}
+```
 
 ---
 
@@ -90,9 +96,15 @@ Host payload (`mcudd` scope `system`):
 
 ## 5. Wi-Fi AP screen (`router_wifi`)
 
-- [ ] SSID + encryption mode from UCI
-- [ ] AP enabled/disabled state
-- [ ] WPA QR (`wifi_qr` field) — host helper exists, verify on CM5
+### Done
+- [x] SSID + encryption mode from UCI (`wifi_enc`: open / WPA / WPA2 / WPA3 / WPA2/3)
+- [x] AP enabled/disabled/down (`IFF_UP`; carrier is 0 with no clients)
+- [x] WPA QR (`wifi_qr`) — `WIFI:T:WPA` or `T:nopass`; SAE still uses `T:WPA` (QR spec)
+
+### Payload
+```json
+{"wifi_ssid":"ImmortalCM5","wifi_enc":"WPA2","wifi_ap_state":"up","wifi_qr":"WIFI:T:WPA;S:ImmortalCM5;P:secret;;"}
+```
 
 ---
 
@@ -136,7 +148,7 @@ Raw ping:
 ## Host (`mcudd`) backlog
 
 - [x] Live network throughput in `mcudd_metrics_network`
-- [ ] Wi-Fi stats when `wlan0` present
+- [x] Wi-Fi AP SSID/encryption/QR in `mcudd_metrics_wifi`
 - [ ] Security metrics from blocky/banIP counters
 - [ ] Rate-limit FIFO nav when ESP32 RX saturated
 - [ ] Do not update `/tmp/mcud_active_screen` until screen evt ack

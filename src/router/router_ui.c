@@ -314,19 +314,24 @@ static void build_clients(router_ui_t *ui, lv_obj_t *scr)
 
 	c = add_metric_card(scr, "LAN / DHCP", 184, NULL);
 	ui->cli_lan_lbl = lv_label_create(c);
-	lv_label_set_text(ui->cli_lan_lbl, "LAN 0");
+	lv_label_set_text(ui->cli_lan_lbl, "DHCP 0/150");
 	lv_obj_set_style_text_color(ui->cli_lan_lbl, COL_TEXT, LV_PART_MAIN);
 	lv_obj_align(ui->cli_lan_lbl, LV_ALIGN_TOP_LEFT, 0, 16);
 
 	ui->cli_total_lbl = lv_label_create(c);
-	lv_label_set_text(ui->cli_total_lbl, "0 clients");
+	lv_label_set_text(ui->cli_total_lbl, "no leases");
 	lv_obj_set_style_text_color(ui->cli_total_lbl, COL_MUTED, LV_PART_MAIN);
+	lv_obj_set_style_text_font(ui->cli_total_lbl, &lv_font_montserrat_14, LV_PART_MAIN);
+	lv_label_set_long_mode(ui->cli_total_lbl, LV_LABEL_LONG_DOT);
+	lv_obj_set_width(ui->cli_total_lbl, 110);
 	lv_obj_align(ui->cli_total_lbl, LV_ALIGN_TOP_RIGHT, 0, 16);
 
 	ui->cli_dhcp_bar = lv_bar_create(c);
 	lv_obj_set_size(ui->cli_dhcp_bar, lv_pct(100), 8);
 	lv_obj_align(ui->cli_dhcp_bar, LV_ALIGN_BOTTOM_MID, 0, -4);
 	lv_bar_set_range(ui->cli_dhcp_bar, 0, 100);
+	lv_obj_set_style_bg_color(ui->cli_dhcp_bar, COL_MUTED, LV_PART_MAIN);
+	lv_obj_set_style_bg_color(ui->cli_dhcp_bar, COL_ACCENT, LV_PART_INDICATOR);
 }
 
 static void build_storage(router_ui_t *ui, lv_obj_t *scr)
@@ -738,13 +743,24 @@ void router_ui_refresh(router_ui_t *ui, const router_metrics_t *m)
 	if (ui->cli_5_lbl)
 		lv_label_set_text(ui->cli_5_lbl, m->wifi_5);
 	if (ui->cli_lan_lbl) {
-		snprintf(buf, sizeof(buf), "LAN %s", m->lan_clients);
+		unsigned pool = m->dhcp_pool ? m->dhcp_pool : 150;
+
+		snprintf(buf, sizeof(buf), "DHCP %s/%u",
+			 m->dhcp_leases[0] ? m->dhcp_leases : "0", pool);
 		lv_label_set_text(ui->cli_lan_lbl, buf);
 	}
-	if (ui->cli_total_lbl)
-		lv_label_set_text(ui->cli_total_lbl, m->clients_total);
-	if (ui->cli_dhcp_bar)
+	if (ui->cli_total_lbl) {
+		if (m->dhcp_summary[0])
+			lv_label_set_text(ui->cli_total_lbl, m->dhcp_summary);
+		else
+			lv_label_set_text(ui->cli_total_lbl, m->clients_total);
+	}
+	if (ui->cli_dhcp_bar) {
 		lv_bar_set_value(ui->cli_dhcp_bar, m->dhcp_pct, LV_ANIM_OFF);
+		lv_obj_set_style_bg_color(ui->cli_dhcp_bar,
+					  m->dhcp_pct >= 85 ? COL_WARN : COL_ACCENT,
+					  LV_PART_INDICATOR);
+	}
 
 	if (ui->sto_root_lbl) {
 		if (m->root_dev[0] && m->root_dev[0] != '-')

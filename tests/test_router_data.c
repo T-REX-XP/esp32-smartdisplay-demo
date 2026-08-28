@@ -116,6 +116,27 @@ static void test_network_ports_and_ping(void)
 	expect(!strcmp(m.eth2_role, "LAN"), "eth2 role");
 }
 
+static void test_wifi_payload(void)
+{
+	router_metrics_t m;
+	const char *json =
+		"{\"wifi_ssid\":\"ImmortalCM5\",\"wifi_enc\":\"WPA2\","
+		"\"wifi_ap_state\":\"up\","
+		"\"wifi_qr\":\"WIFI:T:WPA;S:ImmortalCM5;P:secret;;\"}";
+
+	router_data_init(&m);
+	router_data_apply_json(&m, json);
+	expect(!strcmp(m.wifi_ssid, "ImmortalCM5"), "wifi ssid");
+	expect(!strcmp(m.wifi_enc, "WPA2"), "wifi enc");
+	expect(!strcmp(m.wifi_ap_state, "up"), "wifi state");
+	expect(!strcmp(m.wifi_qr, "WIFI:T:WPA;S:ImmortalCM5;P:secret;;"), "wifi qr");
+
+	router_data_apply_json(&m,
+			       "{\"wifi_qr\":\"WIFI:T:WPA;S:Foo\\\\;Bar;P:x;;\"}");
+	expect(!strcmp(m.wifi_qr, "WIFI:T:WPA;S:Foo\\;Bar;P:x;;"),
+	       "qr json unescape");
+}
+
 int main(void)
 {
 	test_parse_system();
@@ -123,6 +144,7 @@ int main(void)
 	test_hist_ring();
 	test_network_does_not_touch_uart_link_or_hist();
 	test_network_ports_and_ping();
+	test_wifi_payload();
 
 	printf(tests_failed ? "FAILED\n" : "OK\n");
 	return tests_failed ? 1 : 0;

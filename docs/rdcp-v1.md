@@ -38,6 +38,7 @@ Screen IDs: `router_boot`, `router_system`, `router_network`, `router_clients`, 
 {"v":1,"t":"push","op":"hello","data":{"stack":"1.0.0","release":31,"component":"mcudd","rdcp":1}}
 {"v":1,"t":"req","id":1,"op":"version"}
 {"v":1,"t":"res","id":1,"data":{"hostname":"cm5","cpu":"12","ram_pct":40,"wan_ip":"10.0.0.1"}}
+{"v":1,"t":"res","id":2,"data":{"wifi_ssid":"ImmortalCM5","wifi_enc":"WPA2","wifi_ap_state":"up","wifi_qr":"WIFI:T:WPA;S:ImmortalCM5;P:secret;;"}}
 {"v":1,"t":"cmd","op":"screen","data":{"screen":"router_wifi","dir":"left"}}
 {"v":1,"t":"cmd","op":"nav","data":{"dir":"next"}}
 {"v":1,"t":"push","op":"boot","data":{"text":"Network…","pct":60,"screen":"router_boot"}}

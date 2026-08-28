@@ -1,5 +1,17 @@
 # ESP32 Smart Display Demo — Changelog
 
+## 2026-08-28 (Wi-Fi AP screen)
+
+### Added
+
+- Wi-Fi page: SSID, encryption label, AP up/disabled/down, WPA QR (`wifi_qr`). Parser unescapes JSON so SSIDs with `;` / `:` still scan.
+
+## 2026-08-28 (storage screen)
+
+### Added
+
+- Storage page: root usage, overlay/extroot/eMMC label, swap bar.
+
 ## 2026-08-28 (network screen)
 
 ### Added

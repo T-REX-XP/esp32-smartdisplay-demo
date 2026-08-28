@@ -49,6 +49,8 @@ typedef struct {
 	char lan_clients[ROUTER_STR_LEN];
 	char clients_total[ROUTER_STR_LEN];
 	char dhcp_leases[ROUTER_STR_LEN];
+	char dhcp_summary[ROUTER_STR_LEN];
+	unsigned dhcp_pool;
 	unsigned dhcp_pct;
 
 	char root_usage[ROUTER_STR_LEN];

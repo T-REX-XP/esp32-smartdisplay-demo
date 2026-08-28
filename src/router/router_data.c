@@ -41,7 +41,8 @@ static const char *json_find_key(const char *json, const char *key)
 
 static const char *json_str(const char *json, const char *key, char *buf, size_t len)
 {
-	const char *p, *start, *end;
+	const char *p, *src;
+	size_t o = 0;
 
 	if (!json || !key || !buf || !len)
 		return NULL;
@@ -52,12 +53,24 @@ static const char *json_str(const char *json, const char *key, char *buf, size_t
 		p++;
 	if (*p != '"')
 		return NULL;
-	start = p + 1;
-	end = strchr(start, '"');
-	if (!end || (size_t)(end - start) >= len)
+	src = p + 1;
+	while (*src && *src != '"' && o + 1 < len) {
+		if (*src == '\\' && src[1]) {
+			src++;
+			buf[o++] = *src++;
+			continue;
+		}
+		buf[o++] = *src++;
+	}
+	while (*src && *src != '"') {
+		if (*src == '\\' && src[1])
+			src += 2;
+		else
+			src++;
+	}
+	if (*src != '"')
 		return NULL;
-	memcpy(buf, start, (size_t)(end - start));
-	buf[end - start] = '\0';
+	buf[o] = '\0';
 	return buf;
 }
 
@@ -107,11 +120,20 @@ void router_data_init(router_metrics_t *m)
 	set_str(m->rx_rate, ROUTER_STR_LEN, NULL);
 	set_str(m->tx_rate, ROUTER_STR_LEN, NULL);
 	set_str(m->wifi_ssid, ROUTER_STR_LEN, NULL);
+	set_str(m->wifi_enc, sizeof(m->wifi_enc), NULL);
+	set_str(m->wifi_ap_state, ROUTER_STR_LEN, NULL);
 	set_str(m->firewall_state, ROUTER_STR_LEN, "unknown");
 	set_str(m->root_usage, ROUTER_STR_LEN, NULL);
 	set_str(m->data_usage, ROUTER_STR_LEN, "none");
 	set_str(m->data_kind, sizeof(m->data_kind), "none");
 	set_str(m->swap_usage, ROUTER_STR_LEN, "off");
+	set_str(m->wifi_24, ROUTER_STR_LEN, "0");
+	set_str(m->wifi_5, ROUTER_STR_LEN, "0");
+	set_str(m->lan_clients, ROUTER_STR_LEN, "0");
+	set_str(m->clients_total, ROUTER_STR_LEN, "0 clients");
+	set_str(m->dhcp_leases, ROUTER_STR_LEN, "0");
+	set_str(m->dhcp_summary, ROUTER_STR_LEN, "no leases");
+	m->dhcp_pool = 150;
 	m->link_ok = false;
 	m->ping_ms = -1;
 	m->ping_ok = false;
@@ -213,7 +235,11 @@ static void merge_object(router_metrics_t *m, const char *obj)
 		set_str(m->clients_total, ROUTER_STR_LEN, tmp);
 	if (json_str(obj, "dhcp_leases", tmp, sizeof(tmp)))
 		set_str(m->dhcp_leases, ROUTER_STR_LEN, tmp);
-	if (strstr(obj, "\"dhcp_pct\""))
+	if (json_str(obj, "dhcp_summary", tmp, sizeof(tmp)))
+		set_str(m->dhcp_summary, ROUTER_STR_LEN, tmp);
+	if (json_find_key(obj, "dhcp_pool"))
+		m->dhcp_pool = json_uint(obj, "dhcp_pool");
+	if (json_find_key(obj, "dhcp_pct"))
 		m->dhcp_pct = json_uint(obj, "dhcp_pct");
 
 	if (json_str(obj, "root_usage", tmp, sizeof(tmp)))
@@ -239,8 +265,10 @@ static void merge_object(router_metrics_t *m, const char *obj)
 		set_str(m->wifi_ssid, ROUTER_STR_LEN, tmp);
 	if (json_str(obj, "wifi_ap_state", tmp, sizeof(tmp)))
 		set_str(m->wifi_ap_state, ROUTER_STR_LEN, tmp);
-	if (json_str(obj, "wifi_qr", tmp, sizeof(tmp)))
-		set_str(m->wifi_qr, sizeof(m->wifi_qr), tmp);
+	if (json_str(obj, "wifi_enc", tmp, sizeof(tmp)))
+		set_str(m->wifi_enc, sizeof(m->wifi_enc), tmp);
+	if (json_find_key(obj, "wifi_qr"))
+		json_str(obj, "wifi_qr", m->wifi_qr, sizeof(m->wifi_qr));
 
 	if (json_str(obj, "firewall_state", tmp, sizeof(tmp)))
 		set_str(m->firewall_state, ROUTER_STR_LEN, tmp);
