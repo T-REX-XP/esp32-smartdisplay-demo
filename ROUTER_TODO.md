@@ -150,8 +150,8 @@ Raw ping:
 - [x] Live network throughput in `mcudd_metrics_network`
 - [x] Wi-Fi AP SSID/encryption/QR in `mcudd_metrics_wifi`
 - [ ] Security metrics from blocky/banIP counters
-- [ ] Rate-limit FIFO nav when ESP32 RX saturated
-- [ ] Do not update `/tmp/mcud_active_screen` until screen evt ack
+- [x] Rate-limit FIFO nav when ESP32 RX saturated (drop nav/screen while screen cmd pending or within 450 ms of TX; 2.5 s ack timeout)
+- [x] Do not update `/tmp/mcud_active_screen` until screen evt ack
 
 ---
 
