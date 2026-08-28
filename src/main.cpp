@@ -484,6 +484,13 @@ void setup()
     log_i("Router UI mode");
 #ifdef RDCP_TRANSPORT_UART2
     log_i("RDCP transport: UART2 RX=%d TX=%d @ 115200", RDCP_UART_RX, RDCP_UART_TX);
+    /*
+     * GPIO1/3 are shared with USB-UART0. Release UART0 before remapping UART2
+     * onto the same pins for the CM5 JST link — otherwise host RX drops cmds.
+     */
+    Serial.setDebugOutput(false);
+    Serial.flush();
+    Serial.end();
 #endif
     rdcp_transport_begin();
     router_app_init();
@@ -501,10 +508,15 @@ void loop()
 
 #ifdef ROUTER_UI
     router_app_poll_button();
-    for (unsigned serial_budget = 8; serial_budget && rdcp_transport_available(); --serial_budget) {
+    /* Drain UART before LVGL work so screen/nav cmds are not starved. */
+    for (unsigned serial_budget = 32; serial_budget; --serial_budget) {
+        if (!rdcp_transport_available() && serial_budget < 32)
+            break;
         String line = rdcp_transport_read_line();
         if (line.length() > 0)
             router_app_on_serial_line(line.c_str());
+        else if (!rdcp_transport_available())
+            break;
     }
     router_app_loop();
 #else

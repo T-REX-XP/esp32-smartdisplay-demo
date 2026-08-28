@@ -285,7 +285,9 @@ static void handle_cmd(JsonObject data, const char *op)
 		if (!screen || !screen[0])
 			return;
 
-		apply_host_screen(screen, anim_for_dir(dir));
+		/* Short fade — full MOVE anim can starve UART RX for 200ms+. */
+		(void)dir;
+		apply_host_screen(screen, LV_SCR_LOAD_ANIM_FADE_ON);
 		return;
 	}
 
