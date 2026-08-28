@@ -217,13 +217,14 @@ static void handle_cmd(JsonObject data, const char *op)
 
 static void on_nav_request(const char *dir)
 {
-	strncpy(g_last_gesture_dir, dir, sizeof(g_last_gesture_dir) - 1);
-	g_last_gesture_dir[sizeof(g_last_gesture_dir) - 1] = '\0';
-	emit_gesture_event(dir);
+	if (g_host_linked) {
+		strncpy(g_last_gesture_dir, dir, sizeof(g_last_gesture_dir) - 1);
+		g_last_gesture_dir[sizeof(g_last_gesture_dir) - 1] = '\0';
+		emit_gesture_event(dir);
+		return;
+	}
 
-	/* Host-linked: mcudd/webui replies with cmd. Standalone: navigate locally. */
-	if (!g_host_linked)
-		apply_local_nav(dir);
+	apply_local_nav(dir);
 }
 
 static void on_swipe_touch(lv_event_t *e)
