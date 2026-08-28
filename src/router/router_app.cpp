@@ -464,18 +464,19 @@ void router_app_loop(void)
 {
 	unsigned long now = millis();
 
+	if (g_host_linked && g_last_rx_ms != 0 &&
+	    (now - g_last_rx_ms) > ROUTER_LINK_TIMEOUT_MS &&
+	    g_metrics.link_ok) {
+		g_metrics.link_ok = false;
+		if (!router_ui_on_boot(g_ui) && !router_ui_poweroff_active(g_ui))
+			router_ui_refresh(g_ui, &g_metrics);
+	}
+
 	if (router_ui_on_boot(g_ui))
 		return;
 
 	if (router_ui_poweroff_active(g_ui))
 		return;
-
-	if (g_host_linked && g_last_rx_ms != 0 &&
-	    (now - g_last_rx_ms) > ROUTER_LINK_TIMEOUT_MS &&
-	    g_metrics.link_ok) {
-		g_metrics.link_ok = false;
-		router_ui_refresh(g_ui, &g_metrics);
-	}
 
 	router_page_t page = router_ui_current_page(g_ui);
 	unsigned interval = (page == ROUTER_PAGE_SYSTEM) ? 1500u : 2000u;

@@ -196,6 +196,7 @@ static void build_system(router_ui_t *ui, lv_obj_t *scr)
 					      LV_CHART_AXIS_PRIMARY_Y);
 	ui->sys_ser_ram = lv_chart_add_series(ui->sys_chart, COL_MUTED,
 					      LV_CHART_AXIS_PRIMARY_Y);
+	lv_obj_add_flag(ui->sys_chart, LV_OBJ_FLAG_HIDDEN);
 
 	card = add_metric_card(scr, "MEMORY", 192);
 	ui->sys_ram_bar = lv_bar_create(card);
@@ -540,31 +541,44 @@ void router_ui_refresh(router_ui_t *ui, const router_metrics_t *m)
 		if (m->link_ok) {
 			lv_label_set_text(ui->sys_link_lbl, "LINK OK");
 			lv_obj_set_style_text_color(ui->sys_link_lbl, COL_OK, LV_PART_MAIN);
-		} else {
+		} else if (m->last_rx_ms) {
 			lv_label_set_text(ui->sys_link_lbl, "LINK LOST");
 			lv_obj_set_style_text_color(ui->sys_link_lbl, COL_WARN, LV_PART_MAIN);
+		} else {
+			lv_label_set_text(ui->sys_link_lbl, "LINK --");
+			lv_obj_set_style_text_color(ui->sys_link_lbl, COL_MUTED, LV_PART_MAIN);
 		}
 	}
-	if (ui->sys_chart && ui->sys_ser_cpu && ui->sys_ser_ram && m->hist_len > 0) {
+	if (ui->sys_chart && ui->sys_ser_cpu && ui->sys_ser_ram) {
 		unsigned i;
-		unsigned start = (m->hist_head + ROUTER_HIST_LEN - m->hist_len) %
-				 ROUTER_HIST_LEN;
 
-		for (i = 0; i < ROUTER_HIST_LEN; i++) {
-			if (i < m->hist_len) {
-				unsigned idx = (start + i) % ROUTER_HIST_LEN;
-				lv_chart_set_series_value_by_id(ui->sys_chart, ui->sys_ser_cpu, i,
-								 m->cpu_hist[idx]);
-				lv_chart_set_series_value_by_id(ui->sys_chart, ui->sys_ser_ram, i,
-								 m->ram_hist[idx]);
-			} else {
-				lv_chart_set_series_value_by_id(ui->sys_chart, ui->sys_ser_cpu, i,
-								 LV_CHART_POINT_NONE);
-				lv_chart_set_series_value_by_id(ui->sys_chart, ui->sys_ser_ram, i,
-								 LV_CHART_POINT_NONE);
+		if (m->hist_len == 0) {
+			lv_obj_add_flag(ui->sys_chart, LV_OBJ_FLAG_HIDDEN);
+		} else {
+			unsigned start = (m->hist_head + ROUTER_HIST_LEN - m->hist_len) %
+					 ROUTER_HIST_LEN;
+
+			lv_obj_remove_flag(ui->sys_chart, LV_OBJ_FLAG_HIDDEN);
+			for (i = 0; i < ROUTER_HIST_LEN; i++) {
+				if (i < m->hist_len) {
+					unsigned idx = (start + i) % ROUTER_HIST_LEN;
+					lv_chart_set_series_value_by_id(ui->sys_chart,
+									 ui->sys_ser_cpu, i,
+									 m->cpu_hist[idx]);
+					lv_chart_set_series_value_by_id(ui->sys_chart,
+									 ui->sys_ser_ram, i,
+									 m->ram_hist[idx]);
+				} else {
+					lv_chart_set_series_value_by_id(ui->sys_chart,
+									 ui->sys_ser_cpu, i,
+									 LV_CHART_POINT_NONE);
+					lv_chart_set_series_value_by_id(ui->sys_chart,
+									 ui->sys_ser_ram, i,
+									 LV_CHART_POINT_NONE);
+				}
 			}
+			lv_chart_refresh(ui->sys_chart);
 		}
-		lv_chart_refresh(ui->sys_chart);
 	}
 	if (ui->sys_ram_bar)
 		lv_bar_set_value(ui->sys_ram_bar, m->ram_pct, LV_ANIM_OFF);

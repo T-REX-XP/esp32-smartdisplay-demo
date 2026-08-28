@@ -1,5 +1,12 @@
 # ESP32 Smart Display Demo — Changelog
 
+## 2026-08-28 (system screen)
+
+### Added
+
+- **Sparkline** — 40-sample (~1 min) CPU + RAM ring buffer on the system page.
+- **LINK** — `LINK OK` while UART frames arrive; `LINK LOST` after 5 s silence; `LINK --` before the first host frame. Host `link_ok` (WAN) is ignored.
+
 ## 2026-08-28 (docs)
 
 ### Changed

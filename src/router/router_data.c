@@ -19,19 +19,38 @@ static void set_str(char *dst, size_t len, const char *val)
 	dst[len - 1] = '\0';
 }
 
+static const char *json_find_key(const char *json, const char *key)
+{
+	char pattern[48];
+	const char *p, *colon;
+
+	if (!json || !key)
+		return NULL;
+	snprintf(pattern, sizeof(pattern), "\"%s\"", key);
+	p = json;
+	while ((p = strstr(p, pattern)) != NULL) {
+		colon = p + strlen(pattern);
+		while (*colon == ' ' || *colon == '\t')
+			colon++;
+		if (*colon == ':')
+			return colon + 1;
+		p++;
+	}
+	return NULL;
+}
+
 static const char *json_str(const char *json, const char *key, char *buf, size_t len)
 {
-	char pattern[40];
 	const char *p, *start, *end;
 
 	if (!json || !key || !buf || !len)
 		return NULL;
-	snprintf(pattern, sizeof(pattern), "\"%s\"", key);
-	p = strstr(json, pattern);
+	p = json_find_key(json, key);
 	if (!p)
 		return NULL;
-	p = strchr(p + strlen(pattern), '"');
-	if (!p)
+	while (*p == ' ' || *p == '\t')
+		p++;
+	if (*p != '"')
 		return NULL;
 	start = p + 1;
 	end = strchr(start, '"');
@@ -44,17 +63,12 @@ static const char *json_str(const char *json, const char *key, char *buf, size_t
 
 static unsigned json_uint(const char *json, const char *key)
 {
-	char pattern[40];
 	const char *p;
 
-	snprintf(pattern, sizeof(pattern), "\"%s\"", key);
-	p = strstr(json, pattern);
+	p = json_find_key(json, key);
 	if (!p)
 		return 0;
-	p = strchr(p + strlen(pattern), ':');
-	if (!p)
-		return 0;
-	return (unsigned)strtoul(p + 1, NULL, 10);
+	return (unsigned)strtoul(p, NULL, 10);
 }
 
 void router_data_init(router_metrics_t *m)
@@ -110,11 +124,11 @@ static void merge_object(router_metrics_t *m, const char *obj)
 		set_str(m->uptime_short, ROUTER_STR_LEN, tmp);
 	if (json_str(obj, "load_short", tmp, sizeof(tmp)))
 		set_str(m->load_short, ROUTER_STR_LEN, tmp);
-	if (strstr(obj, "\"ram_pct\""))
+	if (json_find_key(obj, "ram_pct"))
 		m->ram_pct = json_uint(obj, "ram_pct");
 
-	/* Push history when system fields are present in this payload. */
-	if (strstr(obj, "\"cpu\"") || strstr(obj, "\"ram_pct\""))
+	/* System scope only — do not append history from other pages. */
+	if (json_find_key(obj, "cpu") && json_find_key(obj, "ram_pct"))
 		router_data_push_hist(m);
 
 	if (json_str(obj, "wan_ip", tmp, sizeof(tmp)))
@@ -164,10 +178,7 @@ static void merge_object(router_metrics_t *m, const char *obj)
 	if (json_str(obj, "vpn_tunnels", tmp, sizeof(tmp)))
 		set_str(m->vpn_tunnels, ROUTER_STR_LEN, tmp);
 
-	if (strstr(obj, "\"link_ok\"")) {
-		const char *lk = strstr(obj, "\"link_ok\":true");
-		m->link_ok = lk != NULL;
-	}
+	/* UART link_ok is owned by firmware (RX silence), not host JSON. */
 
 	/* storage[] first entry used for root bar when dedicated keys absent */
 	if (!m->root_pct && strstr(obj, "\"storage\"")) {
