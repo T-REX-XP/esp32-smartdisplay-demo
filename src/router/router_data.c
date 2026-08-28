@@ -108,6 +108,10 @@ void router_data_init(router_metrics_t *m)
 	set_str(m->tx_rate, ROUTER_STR_LEN, NULL);
 	set_str(m->wifi_ssid, ROUTER_STR_LEN, NULL);
 	set_str(m->firewall_state, ROUTER_STR_LEN, "unknown");
+	set_str(m->root_usage, ROUTER_STR_LEN, NULL);
+	set_str(m->data_usage, ROUTER_STR_LEN, "none");
+	set_str(m->data_kind, sizeof(m->data_kind), "none");
+	set_str(m->swap_usage, ROUTER_STR_LEN, "off");
 	m->link_ok = false;
 	m->ping_ms = -1;
 	m->ping_ok = false;
@@ -214,14 +218,22 @@ static void merge_object(router_metrics_t *m, const char *obj)
 
 	if (json_str(obj, "root_usage", tmp, sizeof(tmp)))
 		set_str(m->root_usage, ROUTER_STR_LEN, tmp);
-	if (strstr(obj, "\"root_pct\""))
+	if (json_find_key(obj, "root_pct"))
 		m->root_pct = json_uint(obj, "root_pct");
+	if (json_str(obj, "root_dev", tmp, sizeof(tmp)))
+		set_str(m->root_dev, sizeof(m->root_dev), tmp);
 	if (json_str(obj, "data_usage", tmp, sizeof(tmp)))
 		set_str(m->data_usage, ROUTER_STR_LEN, tmp);
-	if (strstr(obj, "\"data_pct\""))
+	if (json_find_key(obj, "data_pct"))
 		m->data_pct = json_uint(obj, "data_pct");
+	if (json_str(obj, "data_kind", tmp, sizeof(tmp)))
+		set_str(m->data_kind, sizeof(m->data_kind), tmp);
+	if (json_str(obj, "overlay_dev", tmp, sizeof(tmp)))
+		set_str(m->overlay_dev, sizeof(m->overlay_dev), tmp);
 	if (json_str(obj, "swap_usage", tmp, sizeof(tmp)))
 		set_str(m->swap_usage, ROUTER_STR_LEN, tmp);
+	if (json_find_key(obj, "swap_pct"))
+		m->swap_pct = json_uint(obj, "swap_pct");
 
 	if (json_str(obj, "wifi_ssid", tmp, sizeof(tmp)))
 		set_str(m->wifi_ssid, ROUTER_STR_LEN, tmp);

@@ -21,7 +21,7 @@ Keep in sync: `src/router/router_pages.c`, `/etc/mcud/pages.json`, `mcud-version
 | 1 | `router_system` | `system` | **Done** — CPU% (/proc/stat), RAM, load, sparkline, link LED; temp when thermal present |
 | 2 | `router_network` | `network` | **Done** — WAN IP, RX/TX, ping, eth0/1/2 link badges |
 | 3 | `router_clients` | `clients` | Stub — DHCP lease counts |
-| 4 | `router_storage` | `storage` | Stub — root/data bars |
+| 4 | `router_storage` | `storage` | **Done** — root, eMMC/overlay/extroot, swap |
 | 5 | `router_wifi` | `wifi` | Stub — SSID, AP state, QR |
 | 6 | `router_security` | `security` | Stub — firewall, blocky/banIP, VPN |
 
@@ -76,9 +76,15 @@ Host payload (`mcudd` scope `system`):
 
 ## 4. Storage screen (`router_storage`)
 
-- [ ] Rootfs usage from `df` (already partial in mcudd)
-- [ ] eMMC vs overlay / extroot if present
-- [ ] Swap usage line
+### Done
+- [x] Rootfs usage from `statvfs("/")` (`used/total` + pct)
+- [x] eMMC / overlay / extroot detection via `/proc/mounts` (`data_kind`, `overlay_dev`)
+- [x] Swap usage from `/proc/meminfo` (`off` when absent)
+
+### Payload
+```json
+{"root_usage":"118M/496M","root_pct":24,"root_dev":"root","data_usage":"25.4G/28.5G","data_pct":93,"data_kind":"emmc","overlay_dev":"mmcblk0p1","swap_usage":"off","swap_pct":0}
+```
 
 ---
 

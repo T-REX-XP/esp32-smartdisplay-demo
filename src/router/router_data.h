@@ -53,13 +53,18 @@ typedef struct {
 
 	char root_usage[ROUTER_STR_LEN];
 	unsigned root_pct;
+	char root_dev[16];
 	char data_usage[ROUTER_STR_LEN];
 	unsigned data_pct;
+	char data_kind[16];
+	char overlay_dev[24];
 	char swap_usage[ROUTER_STR_LEN];
+	unsigned swap_pct;
 
 	char wifi_ssid[ROUTER_STR_LEN];
 	char wifi_ap_state[ROUTER_STR_LEN];
-	char wifi_qr[128];
+	char wifi_enc[16];
+	char wifi_qr[160];
 
 	char firewall_state[ROUTER_STR_LEN];
 	char blocked_24h[ROUTER_STR_LEN];

@@ -63,11 +63,15 @@ struct router_ui {
 
 	lv_obj_t *sto_root_bar;
 	lv_obj_t *sto_root_lbl;
+	lv_obj_t *sto_data_title;
 	lv_obj_t *sto_data_bar;
 	lv_obj_t *sto_data_lbl;
+	lv_obj_t *sto_swap_bar;
+	lv_obj_t *sto_swap_lbl;
 
 	lv_obj_t *wifi_ssid_lbl;
 	lv_obj_t *wifi_state_lbl;
+	lv_obj_t *wifi_enc_lbl;
 	lv_obj_t *wifi_qr;
 
 	lv_obj_t *sec_fw_lbl;
@@ -133,7 +137,8 @@ static lv_obj_t *add_body_label(lv_obj_t *parent, const char *text, lv_align_t a
 	return l;
 }
 
-static lv_obj_t *add_metric_card(lv_obj_t *parent, const char *title, int y)
+static lv_obj_t *add_metric_card(lv_obj_t *parent, const char *title, int y,
+				 lv_obj_t **title_lbl)
 {
 	lv_obj_t *card = lv_obj_create(parent);
 
@@ -151,6 +156,8 @@ static lv_obj_t *add_metric_card(lv_obj_t *parent, const char *title, int y)
 	lv_obj_set_style_text_color(t, COL_MUTED, LV_PART_MAIN);
 	lv_obj_set_style_text_font(t, &lv_font_montserrat_14, LV_PART_MAIN);
 	lv_obj_align(t, LV_ALIGN_TOP_LEFT, 0, 0);
+	if (title_lbl)
+		*title_lbl = t;
 	return card;
 }
 
@@ -207,7 +214,7 @@ static void build_system(router_ui_t *ui, lv_obj_t *scr)
 					      LV_CHART_AXIS_PRIMARY_Y);
 	lv_obj_add_flag(ui->sys_chart, LV_OBJ_FLAG_HIDDEN);
 
-	card = add_metric_card(scr, "MEMORY", 192);
+	card = add_metric_card(scr, "MEMORY", 192, NULL);
 	ui->sys_ram_bar = lv_bar_create(card);
 	lv_obj_set_size(ui->sys_ram_bar, lv_pct(100), 10);
 	lv_obj_align(ui->sys_ram_bar, LV_ALIGN_BOTTOM_MID, 0, -4);
@@ -265,7 +272,7 @@ static void add_port_row(lv_obj_t *parent, int y, const char *title,
 
 static void build_network(router_ui_t *ui, lv_obj_t *scr)
 {
-	lv_obj_t *card = add_metric_card(scr, "WAN", 44);
+	lv_obj_t *card = add_metric_card(scr, "WAN", 44, NULL);
 
 	ui->net_wan_lbl = lv_label_create(card);
 	lv_label_set_text(ui->net_wan_lbl, "--");
@@ -291,21 +298,21 @@ static void build_clients(router_ui_t *ui, lv_obj_t *scr)
 {
 	lv_obj_t *c;
 
-	c = add_metric_card(scr, "2.4 GHz", 52);
+	c = add_metric_card(scr, "2.4 GHz", 52, NULL);
 	ui->cli_24_lbl = lv_label_create(c);
 	lv_label_set_text(ui->cli_24_lbl, "0");
 	lv_obj_set_style_text_font(ui->cli_24_lbl, &lv_font_montserrat_20, LV_PART_MAIN);
 	lv_obj_set_style_text_color(ui->cli_24_lbl, COL_ACCENT, LV_PART_MAIN);
 	lv_obj_align(ui->cli_24_lbl, LV_ALIGN_CENTER, 0, 8);
 
-	c = add_metric_card(scr, "5 GHz", 118);
+	c = add_metric_card(scr, "5 GHz", 118, NULL);
 	ui->cli_5_lbl = lv_label_create(c);
 	lv_label_set_text(ui->cli_5_lbl, "0");
 	lv_obj_set_style_text_font(ui->cli_5_lbl, &lv_font_montserrat_20, LV_PART_MAIN);
 	lv_obj_set_style_text_color(ui->cli_5_lbl, COL_ACCENT, LV_PART_MAIN);
 	lv_obj_align(ui->cli_5_lbl, LV_ALIGN_CENTER, 0, 8);
 
-	c = add_metric_card(scr, "LAN / DHCP", 184);
+	c = add_metric_card(scr, "LAN / DHCP", 184, NULL);
 	ui->cli_lan_lbl = lv_label_create(c);
 	lv_label_set_text(ui->cli_lan_lbl, "LAN 0");
 	lv_obj_set_style_text_color(ui->cli_lan_lbl, COL_TEXT, LV_PART_MAIN);
@@ -326,45 +333,68 @@ static void build_storage(router_ui_t *ui, lv_obj_t *scr)
 {
 	lv_obj_t *c;
 
-	c = add_metric_card(scr, "ROOT", 52);
+	c = add_metric_card(scr, "ROOT", 44, NULL);
 	ui->sto_root_lbl = lv_label_create(c);
 	lv_label_set_text(ui->sto_root_lbl, "--");
-	lv_obj_align(ui->sto_root_lbl, LV_ALIGN_TOP_RIGHT, 0, 0);
+	lv_obj_set_style_text_color(ui->sto_root_lbl, COL_TEXT, LV_PART_MAIN);
+	lv_obj_align(ui->sto_root_lbl, LV_ALIGN_TOP_LEFT, 0, 16);
 	ui->sto_root_bar = lv_bar_create(c);
 	lv_obj_set_size(ui->sto_root_bar, lv_pct(100), 10);
 	lv_obj_align(ui->sto_root_bar, LV_ALIGN_BOTTOM_MID, 0, -2);
 	lv_bar_set_range(ui->sto_root_bar, 0, 100);
+	lv_obj_set_style_bg_color(ui->sto_root_bar, COL_MUTED, LV_PART_MAIN);
+	lv_obj_set_style_bg_color(ui->sto_root_bar, COL_ACCENT, LV_PART_INDICATOR);
 
-	c = add_metric_card(scr, "DATA / SWAP", 118);
+	c = add_metric_card(scr, "DATA", 110, &ui->sto_data_title);
 	ui->sto_data_lbl = lv_label_create(c);
 	lv_label_set_text(ui->sto_data_lbl, "--");
+	lv_obj_set_style_text_color(ui->sto_data_lbl, COL_TEXT, LV_PART_MAIN);
 	lv_obj_align(ui->sto_data_lbl, LV_ALIGN_TOP_LEFT, 0, 16);
 	ui->sto_data_bar = lv_bar_create(c);
 	lv_obj_set_size(ui->sto_data_bar, lv_pct(100), 10);
 	lv_obj_align(ui->sto_data_bar, LV_ALIGN_BOTTOM_MID, 0, -2);
 	lv_bar_set_range(ui->sto_data_bar, 0, 100);
+	lv_obj_set_style_bg_color(ui->sto_data_bar, COL_MUTED, LV_PART_MAIN);
+	lv_obj_set_style_bg_color(ui->sto_data_bar, COL_ACCENT, LV_PART_INDICATOR);
+
+	c = add_metric_card(scr, "SWAP", 176, NULL);
+	ui->sto_swap_lbl = lv_label_create(c);
+	lv_label_set_text(ui->sto_swap_lbl, "off");
+	lv_obj_set_style_text_color(ui->sto_swap_lbl, COL_TEXT, LV_PART_MAIN);
+	lv_obj_align(ui->sto_swap_lbl, LV_ALIGN_TOP_LEFT, 0, 16);
+	ui->sto_swap_bar = lv_bar_create(c);
+	lv_obj_set_size(ui->sto_swap_bar, lv_pct(100), 10);
+	lv_obj_align(ui->sto_swap_bar, LV_ALIGN_BOTTOM_MID, 0, -2);
+	lv_bar_set_range(ui->sto_swap_bar, 0, 100);
+	lv_obj_set_style_bg_color(ui->sto_swap_bar, COL_MUTED, LV_PART_MAIN);
+	lv_obj_set_style_bg_color(ui->sto_swap_bar, COL_ACCENT, LV_PART_INDICATOR);
 }
 
 static void build_wifi(router_ui_t *ui, lv_obj_t *scr)
 {
 	ui->wifi_ssid_lbl = add_body_label(scr, "SSID", LV_ALIGN_TOP_LEFT, 14, 48);
 	lv_obj_set_style_text_font(ui->wifi_ssid_lbl, &lv_font_montserrat_18, LV_PART_MAIN);
+	lv_label_set_long_mode(ui->wifi_ssid_lbl, LV_LABEL_LONG_DOT);
+	lv_obj_set_width(ui->wifi_ssid_lbl, 110);
 
-	ui->wifi_state_lbl = add_body_label(scr, "AP --", LV_ALIGN_TOP_LEFT, 14, 78);
+	ui->wifi_enc_lbl = add_body_label(scr, "--", LV_ALIGN_TOP_LEFT, 14, 74);
+	lv_obj_set_style_text_color(ui->wifi_enc_lbl, COL_MUTED, LV_PART_MAIN);
+
+	ui->wifi_state_lbl = add_body_label(scr, "AP --", LV_ALIGN_TOP_LEFT, 14, 98);
 	lv_obj_set_style_text_color(ui->wifi_state_lbl, COL_MUTED, LV_PART_MAIN);
 
 	ui->wifi_qr = lv_qrcode_create(scr);
-	lv_qrcode_set_size(ui->wifi_qr, 120);
-	lv_obj_align(ui->wifi_qr, LV_ALIGN_RIGHT_MID, -10, 20);
+	lv_qrcode_set_size(ui->wifi_qr, 128);
+	lv_obj_align(ui->wifi_qr, LV_ALIGN_BOTTOM_RIGHT, -12, -36);
 	lv_qrcode_set_dark_color(ui->wifi_qr, COL_TEXT);
 	lv_qrcode_set_light_color(ui->wifi_qr, COL_WHITE);
 
-	add_body_label(scr, "Scan to join", LV_ALIGN_BOTTOM_MID, 0, -16);
+	add_body_label(scr, "Scan to join", LV_ALIGN_BOTTOM_LEFT, 14, -20);
 }
 
 static void build_security(router_ui_t *ui, lv_obj_t *scr)
 {
-	lv_obj_t *c = add_metric_card(scr, "Firewall", 52);
+	lv_obj_t *c = add_metric_card(scr, "Firewall", 52, NULL);
 
 	ui->sec_fw_lbl = lv_label_create(c);
 	lv_label_set_text(ui->sec_fw_lbl, "unknown");
@@ -372,7 +402,7 @@ static void build_security(router_ui_t *ui, lv_obj_t *scr)
 	lv_obj_set_style_text_color(ui->sec_fw_lbl, COL_ACCENT, LV_PART_MAIN);
 	lv_obj_align(ui->sec_fw_lbl, LV_ALIGN_CENTER, 0, 8);
 
-	c = add_metric_card(scr, "Threats / VPN", 130);
+	c = add_metric_card(scr, "Threats / VPN", 130, NULL);
 	ui->sec_blocked_lbl = lv_label_create(c);
 	lv_label_set_text(ui->sec_blocked_lbl, "Blocked 24h: --");
 	lv_obj_align(ui->sec_blocked_lbl, LV_ALIGN_TOP_LEFT, 0, 14);
@@ -716,23 +746,84 @@ void router_ui_refresh(router_ui_t *ui, const router_metrics_t *m)
 	if (ui->cli_dhcp_bar)
 		lv_bar_set_value(ui->cli_dhcp_bar, m->dhcp_pct, LV_ANIM_OFF);
 
-	if (ui->sto_root_lbl)
-		lv_label_set_text(ui->sto_root_lbl, m->root_usage);
-	if (ui->sto_root_bar)
+	if (ui->sto_root_lbl) {
+		if (m->root_dev[0] && m->root_dev[0] != '-')
+			snprintf(buf, sizeof(buf), "%s  %s", m->root_usage,
+				 m->root_dev);
+		else
+			snprintf(buf, sizeof(buf), "%s", m->root_usage);
+		lv_label_set_text(ui->sto_root_lbl, buf);
+	}
+	if (ui->sto_root_bar) {
 		lv_bar_set_value(ui->sto_root_bar, m->root_pct, LV_ANIM_OFF);
+		lv_obj_set_style_bg_color(ui->sto_root_bar,
+					  m->root_pct >= 85 ? COL_WARN : COL_ACCENT,
+					  LV_PART_INDICATOR);
+	}
+	if (ui->sto_data_title) {
+		const char *title = "DATA";
+
+		if (!strcmp(m->data_kind, "overlay"))
+			title = "OVERLAY";
+		else if (!strcmp(m->data_kind, "extroot"))
+			title = "EXTROOT";
+		else if (!strcmp(m->data_kind, "emmc"))
+			title = "eMMC";
+		else if (!strcmp(m->data_kind, "sd"))
+			title = "SD";
+		else if (!strcmp(m->data_kind, "disk"))
+			title = "DISK";
+		else if (!strcmp(m->data_kind, "none"))
+			title = "DATA";
+		lv_label_set_text(ui->sto_data_title, title);
+	}
 	if (ui->sto_data_lbl) {
-		snprintf(buf, sizeof(buf), "%s  swap %s", m->data_usage, m->swap_usage);
+		if (!strcmp(m->data_kind, "none") || !m->data_usage[0] ||
+		    m->data_usage[0] == '-')
+			snprintf(buf, sizeof(buf), "none");
+		else if (m->overlay_dev[0] && m->overlay_dev[0] != '-')
+			snprintf(buf, sizeof(buf), "%s  %s", m->data_usage,
+				 m->overlay_dev);
+		else
+			snprintf(buf, sizeof(buf), "%s", m->data_usage);
 		lv_label_set_text(ui->sto_data_lbl, buf);
 	}
-	if (ui->sto_data_bar)
+	if (ui->sto_data_bar) {
 		lv_bar_set_value(ui->sto_data_bar, m->data_pct, LV_ANIM_OFF);
+		lv_obj_set_style_bg_color(ui->sto_data_bar,
+					  m->data_pct >= 85 ? COL_WARN : COL_ACCENT,
+					  LV_PART_INDICATOR);
+	}
+	if (ui->sto_swap_lbl)
+		lv_label_set_text(ui->sto_swap_lbl,
+				  m->swap_usage[0] ? m->swap_usage : "off");
+	if (ui->sto_swap_bar) {
+		lv_bar_set_value(ui->sto_swap_bar, m->swap_pct, LV_ANIM_OFF);
+		lv_obj_set_style_bg_color(ui->sto_swap_bar,
+					  m->swap_pct >= 85 ? COL_WARN : COL_ACCENT,
+					  LV_PART_INDICATOR);
+	}
 
 	if (ui->wifi_ssid_lbl)
 		lv_label_set_text(ui->wifi_ssid_lbl, m->wifi_ssid);
-	if (ui->wifi_state_lbl)
-		lv_label_set_text(ui->wifi_state_lbl, m->wifi_ap_state);
-	if (ui->wifi_qr && m->wifi_qr[0] && m->wifi_qr[0] != '-')
+	if (ui->wifi_enc_lbl)
+		lv_label_set_text(ui->wifi_enc_lbl, m->wifi_enc);
+	if (ui->wifi_state_lbl) {
+		snprintf(buf, sizeof(buf), "AP %s", m->wifi_ap_state);
+		lv_label_set_text(ui->wifi_state_lbl, buf);
+		if (!strcmp(m->wifi_ap_state, "up"))
+			lv_obj_set_style_text_color(ui->wifi_state_lbl, COL_OK, LV_PART_MAIN);
+		else if (!strcmp(m->wifi_ap_state, "disabled"))
+			lv_obj_set_style_text_color(ui->wifi_state_lbl, COL_WARN, LV_PART_MAIN);
+		else
+			lv_obj_set_style_text_color(ui->wifi_state_lbl, COL_MUTED, LV_PART_MAIN);
+	}
+	if (ui->wifi_qr && m->wifi_qr[0] && m->wifi_qr[0] != '-') {
+		lv_obj_remove_flag(ui->wifi_qr, LV_OBJ_FLAG_HIDDEN);
 		lv_qrcode_update(ui->wifi_qr, m->wifi_qr, strlen(m->wifi_qr));
+	} else if (ui->wifi_qr) {
+		lv_obj_add_flag(ui->wifi_qr, LV_OBJ_FLAG_HIDDEN);
+	}
 
 	if (ui->sec_fw_lbl)
 		lv_label_set_text(ui->sec_fw_lbl, m->firewall_state);
