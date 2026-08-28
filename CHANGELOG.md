@@ -1,5 +1,11 @@
 # ESP32 Smart Display Demo — Changelog
 
+## 2026-08-28 (network screen)
+
+### Added
+
+- Network page: WAN RX/TX rates, ping, eth0 WAN / eth1+eth2 LAN link badges.
+
 ## 2026-08-28 (system screen)
 
 ### Added

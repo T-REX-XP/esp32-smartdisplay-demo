@@ -29,9 +29,20 @@ typedef struct {
 	char load_short[ROUTER_STR_LEN];
 
 	char wan_ip[ROUTER_STR_LEN];
+	char wan_dev[16];
 	char rx_rate[ROUTER_STR_LEN];
 	char tx_rate[ROUTER_STR_LEN];
 	int ping_ms;
+	int ping_ok;
+	char eth0_role[8];
+	char eth0_speed[12];
+	bool eth0_up;
+	char eth1_role[8];
+	char eth1_speed[12];
+	bool eth1_up;
+	char eth2_role[8];
+	char eth2_speed[12];
+	bool eth2_up;
 
 	char wifi_24[ROUTER_STR_LEN];
 	char wifi_5[ROUTER_STR_LEN];

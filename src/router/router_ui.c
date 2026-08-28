@@ -45,6 +45,15 @@ struct router_ui {
 	lv_obj_t *net_rx_lbl;
 	lv_obj_t *net_tx_lbl;
 	lv_obj_t *net_ping_lbl;
+	lv_obj_t *net_eth0_lbl;
+	lv_obj_t *net_eth0_speed;
+	lv_obj_t *net_eth0_badge;
+	lv_obj_t *net_eth1_lbl;
+	lv_obj_t *net_eth1_speed;
+	lv_obj_t *net_eth1_badge;
+	lv_obj_t *net_eth2_lbl;
+	lv_obj_t *net_eth2_speed;
+	lv_obj_t *net_eth2_badge;
 
 	lv_obj_t *cli_total_lbl;
 	lv_obj_t *cli_24_lbl;
@@ -222,21 +231,60 @@ static void build_system(router_ui_t *ui, lv_obj_t *scr)
 	lv_obj_set_style_text_font(ui->sys_uptime_lbl, &lv_font_montserrat_14, LV_PART_MAIN);
 }
 
+static void add_port_row(lv_obj_t *parent, int y, const char *title,
+			 lv_obj_t **name_lbl, lv_obj_t **speed_lbl, lv_obj_t **badge)
+{
+	lv_obj_t *row = lv_obj_create(parent);
+
+	lv_obj_set_size(row, lv_pct(92), 36);
+	lv_obj_align(row, LV_ALIGN_TOP_MID, 0, y);
+	lv_obj_remove_flag(row, LV_OBJ_FLAG_SCROLLABLE);
+	lv_obj_set_style_bg_color(row, COL_PANEL, LV_PART_MAIN);
+	lv_obj_set_style_bg_opa(row, LV_OPA_COVER, LV_PART_MAIN);
+	lv_obj_set_style_radius(row, 8, LV_PART_MAIN);
+	lv_obj_set_style_border_width(row, 0, LV_PART_MAIN);
+	lv_obj_set_style_pad_all(row, 4, LV_PART_MAIN);
+
+	*name_lbl = lv_label_create(row);
+	lv_label_set_text(*name_lbl, title);
+	lv_obj_set_style_text_color(*name_lbl, COL_TEXT, LV_PART_MAIN);
+	lv_obj_set_style_text_font(*name_lbl, &lv_font_montserrat_14, LV_PART_MAIN);
+	lv_obj_align(*name_lbl, LV_ALIGN_LEFT_MID, 4, 0);
+
+	*speed_lbl = lv_label_create(row);
+	lv_label_set_text(*speed_lbl, "--");
+	lv_obj_set_style_text_color(*speed_lbl, COL_MUTED, LV_PART_MAIN);
+	lv_obj_align(*speed_lbl, LV_ALIGN_CENTER, 20, 0);
+
+	*badge = lv_label_create(row);
+	lv_label_set_text(*badge, "DOWN");
+	lv_obj_set_style_text_color(*badge, COL_WARN, LV_PART_MAIN);
+	lv_obj_set_style_text_font(*badge, &lv_font_montserrat_14, LV_PART_MAIN);
+	lv_obj_align(*badge, LV_ALIGN_RIGHT_MID, -4, 0);
+}
+
 static void build_network(router_ui_t *ui, lv_obj_t *scr)
 {
-	lv_obj_t *card = add_metric_card(scr, "WAN", 52);
+	lv_obj_t *card = add_metric_card(scr, "WAN", 44);
 
 	ui->net_wan_lbl = lv_label_create(card);
 	lv_label_set_text(ui->net_wan_lbl, "--");
 	lv_obj_set_style_text_color(ui->net_wan_lbl, COL_ACCENT, LV_PART_MAIN);
-	lv_obj_set_style_text_font(ui->net_wan_lbl, &lv_font_montserrat_20, LV_PART_MAIN);
+	lv_obj_set_style_text_font(ui->net_wan_lbl, &lv_font_montserrat_18, LV_PART_MAIN);
 	lv_obj_align(ui->net_wan_lbl, LV_ALIGN_CENTER, 0, 6);
 
-	ui->net_rx_lbl = add_body_label(scr, "RX --", LV_ALIGN_LEFT_MID, 16, 20);
-	ui->net_tx_lbl = add_body_label(scr, "TX --", LV_ALIGN_LEFT_MID, 16, 50);
-	ui->net_ping_lbl = add_body_label(scr, "PING -- ms", LV_ALIGN_RIGHT_MID, -16, 20);
-	lv_obj_set_style_text_font(ui->net_rx_lbl, &lv_font_montserrat_18, LV_PART_MAIN);
-	lv_obj_set_style_text_font(ui->net_tx_lbl, &lv_font_montserrat_18, LV_PART_MAIN);
+	ui->net_rx_lbl = add_body_label(scr, "RX --", LV_ALIGN_TOP_LEFT, 14, 108);
+	ui->net_tx_lbl = add_body_label(scr, "TX --", LV_ALIGN_TOP_LEFT, 14, 128);
+	ui->net_ping_lbl = add_body_label(scr, "PING --", LV_ALIGN_TOP_RIGHT, -14, 108);
+	lv_obj_set_style_text_font(ui->net_rx_lbl, &lv_font_montserrat_14, LV_PART_MAIN);
+	lv_obj_set_style_text_font(ui->net_tx_lbl, &lv_font_montserrat_14, LV_PART_MAIN);
+
+	add_port_row(scr, 160, "eth0 WAN", &ui->net_eth0_lbl, &ui->net_eth0_speed,
+		     &ui->net_eth0_badge);
+	add_port_row(scr, 200, "eth1 LAN", &ui->net_eth1_lbl, &ui->net_eth1_speed,
+		     &ui->net_eth1_badge);
+	add_port_row(scr, 240, "eth2 LAN", &ui->net_eth2_lbl, &ui->net_eth2_speed,
+		     &ui->net_eth2_badge);
 }
 
 static void build_clients(router_ui_t *ui, lv_obj_t *scr)
@@ -622,8 +670,37 @@ void router_ui_refresh(router_ui_t *ui, const router_metrics_t *m)
 		lv_label_set_text(ui->net_tx_lbl, buf);
 	}
 	if (ui->net_ping_lbl) {
-		snprintf(buf, sizeof(buf), "PING %d ms", m->ping_ms);
+		if (m->ping_ms < 0)
+			snprintf(buf, sizeof(buf), "PING --");
+		else if (!m->ping_ok)
+			snprintf(buf, sizeof(buf), "PING fail");
+		else
+			snprintf(buf, sizeof(buf), "PING %d ms", m->ping_ms);
 		lv_label_set_text(ui->net_ping_lbl, buf);
+		lv_obj_set_style_text_color(ui->net_ping_lbl,
+					    m->ping_ok ? COL_OK : COL_MUTED, LV_PART_MAIN);
+	}
+
+	if (ui->net_eth0_speed)
+		lv_label_set_text(ui->net_eth0_speed, m->eth0_speed);
+	if (ui->net_eth0_badge) {
+		lv_label_set_text(ui->net_eth0_badge, m->eth0_up ? "UP" : "DOWN");
+		lv_obj_set_style_text_color(ui->net_eth0_badge,
+					    m->eth0_up ? COL_OK : COL_WARN, LV_PART_MAIN);
+	}
+	if (ui->net_eth1_speed)
+		lv_label_set_text(ui->net_eth1_speed, m->eth1_speed);
+	if (ui->net_eth1_badge) {
+		lv_label_set_text(ui->net_eth1_badge, m->eth1_up ? "UP" : "DOWN");
+		lv_obj_set_style_text_color(ui->net_eth1_badge,
+					    m->eth1_up ? COL_OK : COL_WARN, LV_PART_MAIN);
+	}
+	if (ui->net_eth2_speed)
+		lv_label_set_text(ui->net_eth2_speed, m->eth2_speed);
+	if (ui->net_eth2_badge) {
+		lv_label_set_text(ui->net_eth2_badge, m->eth2_up ? "UP" : "DOWN");
+		lv_obj_set_style_text_color(ui->net_eth2_badge,
+					    m->eth2_up ? COL_OK : COL_WARN, LV_PART_MAIN);
 	}
 
 	if (ui->cli_24_lbl)

@@ -19,7 +19,7 @@ Keep in sync: `src/router/router_pages.c`, `/etc/mcud/pages.json`, `mcud-version
 |---|-----------|-------|--------|
 | — | `router_boot` | — | Done — splash + boot progress |
 | 1 | `router_system` | `system` | **Done** — CPU% (/proc/stat), RAM, load, sparkline, link LED; temp when thermal present |
-| 2 | `router_network` | `network` | Stub — WAN IP, link; RX/TX/ping pending |
+| 2 | `router_network` | `network` | **Done** — WAN IP, RX/TX, ping, eth0/1/2 link badges |
 | 3 | `router_clients` | `clients` | Stub — DHCP lease counts |
 | 4 | `router_storage` | `storage` | Stub — root/data bars |
 | 5 | `router_wifi` | `wifi` | Stub — SSID, AP state, QR |
@@ -59,10 +59,10 @@ Host payload (`mcudd` scope `system`):
 
 ## 2. Network screen (`router_network`)
 
-- [ ] Live RX/TX rates from `/proc/net/dev` or `nlbwmon`
-- [ ] WAN ping to gateway / 1.1.1.1
-- [ ] Dual 2.5 GbE port labels (eth0 WAN, eth1+eth2 LAN)
-- [ ] Link up/down badges per interface
+- [x] Live RX/TX rates from `/proc/net/dev` (WAN device, typically eth0)
+- [x] WAN ping to default gateway, else 1.1.1.1 (background, cached)
+- [x] Dual 2.5 GbE port labels (eth0 WAN, eth1+eth2 LAN)
+- [x] Link up/down badges per interface + negotiated speed
 
 ---
 
@@ -129,7 +129,7 @@ Raw ping:
 
 ## Host (`mcudd`) backlog
 
-- [ ] Live network throughput in `mcudd_metrics_network`
+- [x] Live network throughput in `mcudd_metrics_network`
 - [ ] Wi-Fi stats when `wlan0` present
 - [ ] Security metrics from blocky/banIP counters
 - [ ] Rate-limit FIFO nav when ESP32 RX saturated

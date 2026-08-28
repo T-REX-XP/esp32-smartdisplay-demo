@@ -91,12 +91,38 @@ static void test_network_does_not_touch_uart_link_or_hist(void)
 	expect(!strcmp(m.wan_ip, "10.0.0.1"), "wan_ip still applied");
 }
 
+static void test_network_ports_and_ping(void)
+{
+	router_metrics_t m;
+	const char *json =
+		"{\"wan_ip\":\"10.0.0.2\",\"wan_dev\":\"eth0\","
+		"\"rx_rate\":\"1.2M/s\",\"tx_rate\":\"80.0K/s\","
+		"\"ping_ms\":12,\"ping_ok\":true,"
+		"\"eth0_role\":\"WAN\",\"eth0_up\":true,\"eth0_speed\":\"2.5G\","
+		"\"eth1_role\":\"LAN\",\"eth1_up\":true,\"eth1_speed\":\"2.5G\","
+		"\"eth2_role\":\"LAN\",\"eth2_up\":false,\"eth2_speed\":\"--\"}";
+
+	router_data_init(&m);
+	router_data_apply_json(&m, json);
+	expect(!strcmp(m.rx_rate, "1.2M/s"), "rx_rate");
+	expect(!strcmp(m.tx_rate, "80.0K/s"), "tx_rate");
+	expect(m.ping_ms == 12, "ping_ms");
+	expect(m.ping_ok == 1, "ping_ok");
+	expect(m.eth0_up == true, "eth0 up");
+	expect(m.eth1_up == true, "eth1 up");
+	expect(m.eth2_up == false, "eth2 down");
+	expect(!strcmp(m.eth0_speed, "2.5G"), "eth0 speed");
+	expect(!strcmp(m.eth0_role, "WAN"), "eth0 role");
+	expect(!strcmp(m.eth2_role, "LAN"), "eth2 role");
+}
+
 int main(void)
 {
 	test_parse_system();
 	test_cpu_temp_key_order();
 	test_hist_ring();
 	test_network_does_not_touch_uart_link_or_hist();
+	test_network_ports_and_ping();
 
 	printf(tests_failed ? "FAILED\n" : "OK\n");
 	return tests_failed ? 1 : 0;

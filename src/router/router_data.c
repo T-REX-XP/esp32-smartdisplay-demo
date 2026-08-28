@@ -61,14 +61,37 @@ static const char *json_str(const char *json, const char *key, char *buf, size_t
 	return buf;
 }
 
-static unsigned json_uint(const char *json, const char *key)
+static int json_int(const char *json, const char *key, int *out)
 {
 	const char *p;
 
 	p = json_find_key(json, key);
-	if (!p)
+	if (!p || !out)
 		return 0;
-	return (unsigned)strtoul(p, NULL, 10);
+	*out = (int)strtol(p, NULL, 10);
+	return 1;
+}
+
+static int json_bool(const char *json, const char *key, int *out)
+{
+	const char *p;
+
+	p = json_find_key(json, key);
+	if (!p || !out)
+		return 0;
+	while (*p == ' ' || *p == '\t')
+		p++;
+	*out = (p[0] == 't' || p[0] == 'T' || p[0] == '1');
+	return 1;
+}
+
+static unsigned json_uint(const char *json, const char *key)
+{
+	int v = 0;
+
+	if (!json_int(json, key, &v) || v < 0)
+		return 0;
+	return (unsigned)v;
 }
 
 void router_data_init(router_metrics_t *m)
@@ -80,9 +103,20 @@ void router_data_init(router_metrics_t *m)
 	set_str(m->cpu, ROUTER_STR_LEN, "0");
 	set_str(m->cpu_temp, ROUTER_STR_LEN, NULL);
 	set_str(m->wan_ip, ROUTER_STR_LEN, NULL);
+	set_str(m->wan_dev, sizeof(m->wan_dev), "eth0");
+	set_str(m->rx_rate, ROUTER_STR_LEN, NULL);
+	set_str(m->tx_rate, ROUTER_STR_LEN, NULL);
 	set_str(m->wifi_ssid, ROUTER_STR_LEN, NULL);
 	set_str(m->firewall_state, ROUTER_STR_LEN, "unknown");
 	m->link_ok = false;
+	m->ping_ms = -1;
+	m->ping_ok = false;
+	set_str(m->eth0_role, sizeof(m->eth0_role), "WAN");
+	set_str(m->eth1_role, sizeof(m->eth1_role), "LAN");
+	set_str(m->eth2_role, sizeof(m->eth2_role), "LAN");
+	set_str(m->eth0_speed, sizeof(m->eth0_speed), NULL);
+	set_str(m->eth1_speed, sizeof(m->eth1_speed), NULL);
+	set_str(m->eth2_speed, sizeof(m->eth2_speed), NULL);
 }
 
 void router_data_push_hist(router_metrics_t *m)
@@ -133,12 +167,37 @@ static void merge_object(router_metrics_t *m, const char *obj)
 
 	if (json_str(obj, "wan_ip", tmp, sizeof(tmp)))
 		set_str(m->wan_ip, ROUTER_STR_LEN, tmp);
+	if (json_str(obj, "wan_dev", tmp, sizeof(tmp)))
+		set_str(m->wan_dev, sizeof(m->wan_dev), tmp);
 	if (json_str(obj, "rx_rate", tmp, sizeof(tmp)))
 		set_str(m->rx_rate, ROUTER_STR_LEN, tmp);
 	if (json_str(obj, "tx_rate", tmp, sizeof(tmp)))
 		set_str(m->tx_rate, ROUTER_STR_LEN, tmp);
-	if (strstr(obj, "\"ping_ms\""))
-		m->ping_ms = (int)json_uint(obj, "ping_ms");
+	if (json_int(obj, "ping_ms", &m->ping_ms))
+		;
+	{
+		int b = 0;
+		if (json_bool(obj, "ping_ok", &b))
+			m->ping_ok = b != 0;
+		if (json_str(obj, "eth0_role", tmp, sizeof(tmp)))
+			set_str(m->eth0_role, sizeof(m->eth0_role), tmp);
+		if (json_str(obj, "eth0_speed", tmp, sizeof(tmp)))
+			set_str(m->eth0_speed, sizeof(m->eth0_speed), tmp);
+		if (json_bool(obj, "eth0_up", &b))
+			m->eth0_up = b != 0;
+		if (json_str(obj, "eth1_role", tmp, sizeof(tmp)))
+			set_str(m->eth1_role, sizeof(m->eth1_role), tmp);
+		if (json_str(obj, "eth1_speed", tmp, sizeof(tmp)))
+			set_str(m->eth1_speed, sizeof(m->eth1_speed), tmp);
+		if (json_bool(obj, "eth1_up", &b))
+			m->eth1_up = b != 0;
+		if (json_str(obj, "eth2_role", tmp, sizeof(tmp)))
+			set_str(m->eth2_role, sizeof(m->eth2_role), tmp);
+		if (json_str(obj, "eth2_speed", tmp, sizeof(tmp)))
+			set_str(m->eth2_speed, sizeof(m->eth2_speed), tmp);
+		if (json_bool(obj, "eth2_up", &b))
+			m->eth2_up = b != 0;
+	}
 
 	if (json_str(obj, "wifi_24", tmp, sizeof(tmp)))
 		set_str(m->wifi_24, ROUTER_STR_LEN, tmp);
