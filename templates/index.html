@@ -197,8 +197,26 @@
                                 <p class="section-hint">Host-driven navigation: swipes send <code>evt</code> gestures to the daemon; the daemon replies with <code>cmd</code> + metrics. MCU shows boot splash for 10s by default.</p>
                                 <div id="routerScreenButtons" class="command-group"></div>
                                 <div class="command-group">
+                                    <button type="button" class="btn btn-outline-secondary btn-command" id="navPrevBtn">
+                                        <i class="fas fa-chevron-left"></i> Nav prev
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary btn-command" id="navNextBtn">
+                                        Nav next <i class="fas fa-chevron-right"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary btn-command" id="helloBtn">
+                                        <i class="fas fa-handshake"></i> Hello
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary btn-command" id="pingBtn">
+                                        <i class="fas fa-satellite"></i> Ping
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary btn-command" id="echoBtn">
+                                        <i class="fas fa-reply"></i> Echo
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary btn-command" id="bootBtn">
+                                        <i class="fas fa-power-off"></i> Boot 60%
+                                    </button>
                                     <button type="button" class="btn btn-outline-warning btn-command" id="pushAlertBtn">
-                                        <i class="fas fa-bell"></i> Push Alert Line
+                                        <i class="fas fa-bell"></i> Push Alert
                                     </button>
                                 </div>
                             </div>
@@ -322,6 +340,18 @@
                                         req system
                                     </button>
                                     <button type="button" class="btn btn-sm btn-outline-secondary preset-cmd"
+                                            data-preset='{"v":1,"t":"req","id":2,"op":"ping"}'>
+                                        req ping
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary preset-cmd"
+                                            data-preset='{"v":1,"t":"push","op":"hello","data":{"stack":"1.0.0","release":40,"component":"mcudd","rdcp":1}}'>
+                                        push hello
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary preset-cmd"
+                                            data-preset='{"v":1,"t":"cmd","op":"echo","data":{"text":"ping"}}'>
+                                        cmd echo
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary preset-cmd"
                                             data-preset='{"v":1,"t":"evt","op":"screen","data":{"screen":"router_wifi","action":"loaded"}}'>
                                         evt wifi
                                     </button>
@@ -343,13 +373,13 @@
                             </div>
                             <div class="card-body small font-monospace">
                                 <div class="mb-2"><strong>MCU → host req:</strong><br>
-                                    {"v":1,"t":"req","id":N,"op":"metrics","scope":"system"}</div>
+                                    {"v":1,"t":"req","id":N,"op":"metrics","scope":"wifi"}</div>
                                 <div class="mb-2"><strong>Host → MCU res:</strong><br>
-                                    {"v":1,"t":"res","id":N,"data":{...}}</div>
+                                    {"v":1,"t":"res","id":N,"data":{"wifi_ssid":"…","wifi_enc":"WPA2"}}</div>
+                                <div class="mb-2"><strong>Link:</strong> push hello · req version · req ping · cmd echo</div>
                                 <div class="mb-2"><strong>MCU → host evt:</strong><br>
-                                    {"v":1,"t":"evt","op":"screen","data":{"screen":"router_system","action":"loaded"}}</div>
-                                <div><strong>Host → MCU cmd:</strong><br>
-                                    {"v":1,"t":"cmd","op":"screen","data":{"screen":"router_system"}}</div>
+                                    screen / input(gesture) / version / echo</div>
+                                <div><strong>Host → MCU cmd:</strong> screen · nav next|prev</div>
                             </div>
                         </div>
                     </div>
@@ -438,13 +468,14 @@
         document.getElementById('pushAlertBtn').addEventListener('click', () => {
             const line = prompt('Alert line to push to MCU:', 'WAN link restored');
             if (line === null) return;
-            sendCommand({
-                v: 1,
-                t: 'cmd',
-                op: 'push',
-                data: { line },
-            });
+            postJson('/api/alert', { text: line, screen: 'router_network' });
         });
+        document.getElementById('navPrevBtn').addEventListener('click', () => postJson('/api/nav', { dir: 'prev' }));
+        document.getElementById('navNextBtn').addEventListener('click', () => postJson('/api/nav', { dir: 'next' }));
+        document.getElementById('helloBtn').addEventListener('click', () => postJson('/api/hello', {}));
+        document.getElementById('pingBtn').addEventListener('click', () => postJson('/api/ping', { id: 1 }));
+        document.getElementById('echoBtn').addEventListener('click', () => postJson('/api/echo', { text: 'ping' }));
+        document.getElementById('bootBtn').addEventListener('click', () => postJson('/api/boot', { text: 'Network…', pct: 60 }));
 
         document.querySelectorAll('.btn-command').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -582,6 +613,24 @@
             }
         }
 
+        async function postJson(url, body) {
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body || {}),
+                });
+                const result = await response.json();
+                if (result.status === 'sent') {
+                    addLog(`📤 ${url}: ${JSON.stringify(result)}`);
+                } else {
+                    addLog(`❌ ${result.message || 'request failed'}`);
+                }
+            } catch (error) {
+                addLog(`❌ ${url}: ${error.message}`);
+            }
+        }
+
         async function sendRdcpRes(scope) {
             const id = parseInt(document.getElementById('rdcpResId').value, 10) || 1;
 
@@ -667,6 +716,11 @@
             if (obj.v === 1 && obj.t === 'req' && obj.op === 'metrics') {
                 const scope = obj.scope || 'system';
                 addLog(`↪ MCU requested metrics scope=${scope} (id=${obj.id}) — host auto-replies on serial`);
+                setTimeout(refreshLastMetrics, 250);
+            }
+            if (obj.v === 1 && obj.t === 'evt' && obj.op === 'version') {
+                const d = obj.data || {};
+                addLog(`🏷️ MCU version ${d.stack}+${d.release} rdcp=${d.rdcp}`);
             }
 
             if (obj.screen) {
@@ -735,25 +789,38 @@
                 add('load_short', 'Load');
             } else if (scope === 'network') {
                 add('wan_ip', 'WAN IP');
+                add('wan_dev', 'WAN dev');
                 add('rx_rate', 'RX rate');
                 add('tx_rate', 'TX rate');
                 add('ping_ms', 'Ping ms');
-                add('link_ok', 'Link OK');
+                add('ping_ok', 'Ping OK');
+                add('eth0_role', 'eth0');
+                add('eth0_speed', 'eth0 speed');
+                add('eth0_up', 'eth0 up');
+                add('eth1_up', 'eth1 up');
+                add('eth2_up', 'eth2 up');
             } else if (scope === 'clients') {
                 add('wifi_24', 'WiFi 2.4G');
                 add('wifi_5', 'WiFi 5G');
                 add('lan_clients', 'LAN clients');
                 add('clients_total', 'Total');
                 add('dhcp_leases', 'DHCP leases');
+                add('dhcp_pool', 'DHCP pool');
                 add('dhcp_pct', 'DHCP %');
+                add('dhcp_summary', 'DHCP names');
             } else if (scope === 'storage') {
                 add('root_usage', 'Root usage');
                 add('root_pct', 'Root %');
+                add('root_dev', 'Root dev');
+                add('data_kind', 'Data kind');
                 add('data_usage', 'Data usage');
                 add('data_pct', 'Data %');
+                add('overlay_dev', 'Overlay');
                 add('swap_usage', 'Swap');
+                add('swap_pct', 'Swap %');
             } else if (scope === 'wifi') {
                 add('wifi_ssid', 'SSID');
+                add('wifi_enc', 'Encryption');
                 add('wifi_ap_state', 'AP state');
                 add('wifi_qr', 'QR payload');
             } else if (scope === 'security') {
@@ -769,15 +836,32 @@
                 : '<div class="col-12 text-muted">No scalar fields in payload.</div>';
         }
 
+        async function refreshLastMetrics() {
+            try {
+                const response = await fetch('/api/status');
+                const status = await response.json();
+                if (status.last_metrics && status.last_metrics_scope) {
+                    updateMetricsPreview(status.last_metrics_scope, status.last_metrics);
+                }
+            } catch (error) {
+                /* ignore */
+            }
+        }
+
         async function updateConnectionStatus() {
             try {
                 const response = await fetch('/api/status');
                 const status = await response.json();
 
                 if (status.connected) {
-                    connectionStatus.innerHTML = `<i class="fas fa-circle status-connected"></i> Connected to ${status.port}`;
+                    const fw = status.fw_version;
+                    const fwBit = fw ? ` · MCU ${fw.stack}+${fw.release}` : '';
+                    connectionStatus.innerHTML = `<i class="fas fa-circle status-connected"></i> ${status.port}${fwBit}`;
                     connectBtn.disabled = true;
                     disconnectBtn.disabled = false;
+                    if (status.active_screen) {
+                        activeScreenName.textContent = status.active_screen;
+                    }
                     if (!logEventSource || !responseEventSource) {
                         startEventSources();
                     }
