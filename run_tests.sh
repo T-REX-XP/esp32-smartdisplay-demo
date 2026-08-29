@@ -15,6 +15,14 @@ echo ">> shell: mcud-version sync"
 sh scripts/check-version-sync.sh || FAIL=1
 
 echo ""
+echo ">> shell: RDCP fixture sync"
+sh scripts/check-rdcp-fixtures.sh || FAIL=1
+
+echo ""
+echo ">> C: proto+app host tests (100% coverage)"
+sh tests/host/run-host-tests.sh || FAIL=1
+
+echo ""
 echo ">> C: test_router_data.c"
 cc -std=c99 -Wall -Wextra -I"$SRC" -o test_router_data \
 	tests/test_router_data.c \

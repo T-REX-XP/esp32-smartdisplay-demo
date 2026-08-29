@@ -463,13 +463,14 @@ void setup()
         delay(1);
     }
 
-    // Re-enable debug output after stabilization
+#ifndef ROUTER_UI
     Serial.setDebugOutput(true);
     log_i("Board: %s", BOARD_NAME);
     log_i("CPU: %s rev%d, CPU Freq: %d Mhz, %d core(s)", ESP.getChipModel(), ESP.getChipRevision(), getCpuFrequencyMhz(), ESP.getChipCores());
     log_i("Free heap: %d bytes", ESP.getFreeHeap());
     log_i("Free PSRAM: %d bytes", ESP.getPsramSize());
     log_i("SDK version: %s", ESP.getSdkVersion());
+#endif
 
 #ifndef ROUTER_UI
     pinMode(BTN_UP, INPUT_PULLUP);
@@ -481,12 +482,10 @@ void setup()
     __attribute__((unused)) auto disp = lv_disp_get_default();
 
 #ifdef ROUTER_UI
-    log_i("Router UI mode");
 #ifdef RDCP_TRANSPORT_UART2
-    log_i("RDCP transport: UART2 RX=%d TX=%d @ 115200", RDCP_UART_RX, RDCP_UART_TX);
     /*
      * GPIO1/3 are shared with USB-UART0. Release UART0 before remapping UART2
-     * onto the same pins for the CM5 JST link — otherwise host RX drops cmds.
+     * onto the same pins for the CM5 JST link. Never print debug on this UART.
      */
     Serial.setDebugOutput(false);
     Serial.flush();

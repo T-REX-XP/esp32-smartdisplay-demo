@@ -4,8 +4,6 @@
 
 #ifdef __cplusplus
 
-#include <ArduinoJson.h>
-
 void router_app_init(void);
 void router_app_poll_button(void);
 void router_app_loop(void);
