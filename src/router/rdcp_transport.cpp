@@ -56,6 +56,13 @@ void rdcp_transport_begin(void)
 	}
 }
 #else
+#ifndef RDCP_LINE_MAX
+#define RDCP_LINE_MAX 4096
+#endif
+
+static char g_line_buf[RDCP_LINE_MAX];
+static size_t g_line_len;
+
 static Stream &rdcp_stream(void)
 {
 	return Serial;
@@ -64,6 +71,7 @@ static Stream &rdcp_stream(void)
 void rdcp_transport_begin(void)
 {
 	/* USB Serial is initialized in setup() before router_app_init(). */
+	g_line_len = 0;
 }
 #endif
 
