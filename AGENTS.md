@@ -11,7 +11,7 @@ CM5 ttyS2  <── 115200 8N1 ──>  ESP32 UART2 (GPIO3 RX / GPIO1 TX)
 mcudd                          router_app + LVGL
 ```
 
-USB-C CH340 and the P1 JST header share GPIO1/3. Use **either** USB flash **or** JST to CM5, not both TX drivers.
+USB-C CH340 and the P1 JST header share GPIO1/3. Flash uses USB TX; live RDCP uses JST. Firmware `RDCP_USB_MIRROR_RX` copies inbound mcudd JSON onto GPIO1 as `#rx …` for a Mac USB monitor — [docs/usb-c-rdcp-sniff.md](docs/usb-c-rdcp-sniff.md). Do not type into the monitor (CH340 TX fights CM5 on GPIO3). If `#rx` never appears, unplug USB and use router `logread` `uart tx:`.
 
 From the **router** (stop `mcudd` first): `picocom -b 115200 /dev/ttyS2` — skill **`cm5-mcu-serial`** in openwrt-packages.
 
@@ -27,7 +27,7 @@ pio run -e esp32-2432S022C-router -t upload --upload-port /dev/cu.usbserial-XXXX
 
 This machine: `/Users/t-rex-xp/Library/Python/3.9/bin/pio` (or `python3 -m platformio`).
 
-After upload: **unplug USB-C**, then start `mcudd` on the router. If `ttyS2` RX stays frozen, tap **RST** on the panel with mcudd running.
+After upload: start `mcudd` on the router. For a live link, **unplug USB-C** (CH340 TX vs CM5 TX on GPIO3). To sniff mcudd on the Mac, keep USB plugged and open the monitor receive-only — see [docs/usb-c-rdcp-sniff.md](docs/usb-c-rdcp-sniff.md). If `ttyS2` RX stays frozen, tap **RST** on the panel with mcudd running.
 
 ## Frozen: swipe → LuCI active page
 
@@ -42,7 +42,7 @@ LuCI prev/next is the same wire: host `cmd screen` → MCU `apply_page` → `evt
 ## Do not
 
 - Flash while `mcudd` holds `/dev/ttyS2`
-- Leave USB-C plugged after flash
+- Leave USB-C plugged after flash unless you are receive-only sniffing (`#rx` lines)
 - Edit swipe to wait for host `cmd screen`, or emit `evt input`
 
 ## Related

@@ -127,6 +127,15 @@ class TestSimulatorProtocol(unittest.TestCase):
         self.assertEqual(frames[0]["id"], 7)
         self.assertEqual(frames[0]["data"]["wifi_enc"], "WPA2")
 
+    def test_usb_sniff_hash_rx_ignored(self):
+        ser = FakeSerial()
+        self.sim_json.serial_conn = ser
+        hello = '{"v":1,"t":"push","op":"hello","data":{"stack":"1.0.0","release":47}}'
+        self.sim_json.process_command("#rx " + hello)
+        self.assertEqual(self.sim_json.sniff_count, 1)
+        self.assertFalse(self.sim_json.linked)
+        self.assertEqual(ser.lines(), [])
+
     def test_screen_evt_adopts_without_cmd(self):
         ser = FakeSerial()
         self.sim_json.serial_conn = ser
@@ -136,6 +145,37 @@ class TestSimulatorProtocol(unittest.TestCase):
         )
         self.assertEqual(self.sim_json.active_screen, "router_network")
         self.assertEqual(ser.lines(), [])
+
+    def test_version_evt_does_not_link_or_push_boot(self):
+        ser = FakeSerial()
+        self.sim_json.serial_conn = ser
+        self.sim_json.process_command(
+            '{"v":1,"t":"evt","op":"version","data":{"stack":"1.0.0","release":47,"component":"esp32-router","rdcp":1}}'
+        )
+        self.assertFalse(self.sim_json.linked)
+        self.sim_json.process_command(
+            '{"v":1,"t":"evt","op":"screen","data":{"screen":"router_boot","action":"loaded"}}'
+        )
+        self.assertEqual(self.sim_json.active_screen, "router_boot")
+        self.assertEqual(ser.lines(), [])
+
+    def test_metrics_req_sets_linked(self):
+        ser = FakeSerial()
+        self.sim_json.serial_conn = ser
+        self.sim_json.process_command(
+            '{"v":1,"t":"req","id":7,"op":"metrics","scope":"wifi"}'
+        )
+        self.assertTrue(self.sim_json.linked)
+
+    def test_glued_uart_frames(self):
+        ser = FakeSerial()
+        self.sim_json.serial_conn = ser
+        self.sim_json.process_command(
+            '{"v":1,"t":"evt","op":"version","data":{"stack":"1.0.0","release":47,"component":"esp32-router","rdcp":1}}'
+            '\x0b{"v":1,"t":"evt","op":"screen","data":{"screen":"router_system","action":"loaded"}}'
+        )
+        self.assertEqual(self.sim_json.active_screen, "router_system")
+        self.assertFalse(self.sim_json.linked)
 
     def test_hello_and_ping_frames(self):
         ser = FakeSerial()

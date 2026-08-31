@@ -118,6 +118,8 @@ class ESP32Simulator:
         self.last_metrics = None
         self.last_metrics_scope = None
         self.fw_version = None
+        self.sniff_count = 0
+        self.linked = False
         self._net_prev = None
         self._net_prev_t = 0.0
         self._rx_rate = "--"
@@ -135,15 +137,18 @@ class ESP32Simulator:
 
     def connect(self):
         try:
-            self.serial_conn = serial.Serial(
-                port=self.port,
-                baudrate=self.baudrate,
-                timeout=1,
-                write_timeout=1,
-            )
+            # Set DTR/RTS before open so CH340 does not pulse ESP32 EN/GPIO0.
+            self.serial_conn = serial.Serial()
+            self.serial_conn.port = self.port
+            self.serial_conn.baudrate = self.baudrate
+            self.serial_conn.timeout = 1
+            self.serial_conn.write_timeout = 1
+            self.serial_conn.dsrdtr = False
+            self.serial_conn.rtscts = False
             self.serial_conn.dtr = False
             self.serial_conn.rts = False
-            time.sleep(3)
+            self.serial_conn.open()
+            time.sleep(0.4)
             self.log(f"✅ Connected to {self.port} at {self.baudrate} baud (DTR/RTS disabled)")
             self.send_hello()
             self.send_boot_push("boot", "Host simulator connected…", 20)
@@ -509,6 +514,7 @@ class ESP32Simulator:
         op = command.get("op")
         if op == "metrics":
             scope = command.get("scope", "system")
+            self.linked = True
             self.log(f"📊 RDCP metrics request scope={scope} id={req_id}")
             data = self.build_scope_metrics(scope)
             if req_id:
@@ -532,11 +538,11 @@ class ESP32Simulator:
             screen = data.get("screen", "?")
             self.active_screen = screen
             self.log(f"📱 MCU screen event: {screen}")
-            if screen == "router_boot":
-                self.send_boot_push("boot", "Host connected — booting…", 35)
             return
         if op == "version":
             self.fw_version = data
+            # Unlinked firmware also emits evt version every ~2s. Link is
+            # req metrics (MCU heard hello), not the version beacon.
             self.log(
                 f"🏷️ Firmware version stack={data.get('stack')} "
                 f"release={data.get('release')} rdcp={data.get('rdcp')}"
@@ -590,22 +596,29 @@ class ESP32Simulator:
 
     def process_command(self, command_str):
         try:
-            command = json.loads(command_str.strip())
+            line = command_str.strip()
+            if not line:
+                return
+            # Firmware RDCP_USB_MIRROR_RX copies host→MCU frames onto GPIO1
+            # as `#rx {…}`. That is a USB sniff echo, not an MCU request.
+            if line.startswith("#"):
+                self.sniff_count += 1
+                self.log(f"🪞 USB sniff echo: {line}")
+                return
+            decoder = json.JSONDecoder()
+            command, idx = decoder.raw_decode(line)
+            leftover = line[idx:].lstrip("\x00\x0b\x0c\r\t ")
             self.log(f"📥 Received: {command}")
 
             if command.get("v") == 1:
                 t = command.get("t")
                 if t == "req":
                     self.handle_rdcp_request(command)
-                    return
-                if t == "evt":
+                elif t == "evt":
                     self.handle_rdcp_event(command)
-                    return
-                if t == "res":
+                elif t == "res":
                     self.handle_rdcp_res(command)
-                    return
-
-            if "screen" in command:
+            elif "screen" in command:
                 self.handle_screen_change(command["screen"])
             elif "request" in command:
                 self.handle_legacy_request(command["request"])
@@ -614,16 +627,26 @@ class ESP32Simulator:
             else:
                 self.log(f"⚠️  Unknown command: {command}")
 
+            if leftover.startswith("{"):
+                self.process_command(leftover)
+            elif leftover:
+                self.log(f"⚠️ UART leftover after JSON: {leftover[:80]!r}")
+
         except json.JSONDecodeError as e:
-            self.log(f"❌ Invalid JSON received: {command_str.strip()} - {e}")
+            line = command_str.strip()
+            if line.startswith("{") or line.startswith("["):
+                self.log(f"❌ Invalid JSON received: {line} - {e}")
+            else:
+                self.log(f"📟 UART: {line}")
         except Exception as e:
             self.log(f"❌ Error processing command: {e}")
 
     def listen_loop(self):
         self.log("👂 Listening for ESP32 RDCP (JSON lines)…")
         self.log(f"   Host version {self.version['stack']}+{self.version['release']} rdcp={self.version['rdcp']}")
-        self.log("   MCU req metrics / evt screen|version — host replies with res/cmd/push")
+        self.log("   MCU req metrics / evt screen|version — host replies with res (MCU owns pages)")
         buffer = ""
+        last_hello = 0.0
         while self.running:
             try:
                 if self.serial_conn and self.serial_conn.is_open:
@@ -638,6 +661,10 @@ class ESP32Simulator:
                             buffer = buffer[line_end + 1 :]
                             if line:
                                 self.process_command(line)
+                    now = time.monotonic()
+                    if not self.linked and now - last_hello >= 2.0:
+                        self.send_hello()
+                        last_hello = now
                 time.sleep(0.01)
             except serial.SerialException as e:
                 self.log(f"❌ Serial error: {e}")

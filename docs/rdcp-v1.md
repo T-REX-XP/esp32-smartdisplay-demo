@@ -56,7 +56,7 @@ Screen IDs: `router_boot`, `router_system`, `router_network`, `router_clients`, 
 
 | Build | Port | Pins (2432S022C) |
 |-------|------|------------------|
-| `esp32-2432S022C-router` (`RDCP_TRANSPORT_UART2`) | UART2 @ 115200 8N1 | RX=GPIO3, TX=GPIO1 (P1 JST; GPIO16/17 are LCD) |
+| `esp32-2432S022C-router` (`RDCP_TRANSPORT_UART2`) | UART2 @ 115200 8N1 | RX=GPIO3, TX=GPIO1 (P1 JST; GPIO16/17 are LCD). `RDCP_USB_MIRROR_RX` copies inbound lines to GPIO1 as `#rx …` for USB-C CH340. |
 
 CM5: `/dev/ttyS2` on the 3-pin debug header. See the [firmware README](../README.md#hardware).
 

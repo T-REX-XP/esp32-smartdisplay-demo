@@ -29,7 +29,9 @@ LuCI / USERKEY / MaskROM
 
 **Board:** ESP32-2432S022C (USB-C, ST7789 i80, CST816S touch). GPIO16/17 are the LCD DC/CS lines, so RDCP does **not** use the usual UART2 pins.
 
-**Serial (router env):** UART2 remapped to the P1 JST “Power + Serial” header — **GPIO3 RX**, **GPIO1 TX**, 115200 8N1. Those pins are shared with USB-C serial: use **either** USB-C (bench) **or** the JST wired to the CM5, not both TX drivers at once.
+**Serial (router env):** UART2 remapped to the P1 JST “Power + Serial” header — **GPIO3 RX**, **GPIO1 TX**, 115200 8N1. Those pins are shared with USB-C serial. Flash **or** run JST to the CM5; CH340 TX on GPIO3 fights CM5 TX.
+
+Router firmware mirrors inbound mcudd frames onto GPIO1 as `#rx {…}` so a Mac USB monitor can see host payloads. Do not type into that port. Details: [docs/usb-c-rdcp-sniff.md](docs/usb-c-rdcp-sniff.md).
 
 | CM5 J3 debug pin | Signal | ESP32 (2432S022C) |
 |------------------|--------|-------------------|
@@ -59,7 +61,7 @@ Schematics: `boards/assets/schematics/ESP32-2432S022-{MCU,LCM}-V1.0.png`.
 # Production firmware for CM5
 pio run -e esp32-2432S022C-router
 pio run -e esp32-2432S022C-router -t upload
-pio device monitor -e esp32-2432S022C-router   # USB-C only; disconnect JST to CM5
+pio device monitor -e esp32-2432S022C-router   # see MCU JSON + `#rx` mcudd copies; do not type
 ```
 
 `scripts/gen_mcud_version.py` runs as a pre-script and writes `src/router/mcud_version.h` from `mcud-version.json`. Do not edit the header by hand. Keep the JSON in lockstep with `openwrt-packages/feeds/luci/luci-app-mcu-display/mcud-version.json`.

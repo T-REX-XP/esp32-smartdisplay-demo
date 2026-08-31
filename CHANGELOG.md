@@ -1,5 +1,11 @@
 # ESP32 Smart Display Demo — Changelog
 
+## 2026-08-31 (USB-C RDCP sniff)
+
+### Added
+
+- **`RDCP_USB_MIRROR_RX`** on `esp32-2432S022C-router` — copies each host→MCU UART line onto GPIO1 as `#rx {…}` so a Mac USB-C monitor can see mcudd payloads. Receive-only: do not type (CH340 TX shares GPIO3 with JST). See [docs/usb-c-rdcp-sniff.md](docs/usb-c-rdcp-sniff.md).
+
 ## 2026-08-28 (firmware UI)
 
 ### Added

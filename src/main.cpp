@@ -458,12 +458,14 @@ void setup()
     // Quick stabilization - much shorter delay
     delay(500);
 
+#ifndef ROUTER_UI
     // Clear any pending serial data quickly (non-blocking approach)
     unsigned long clearStart = millis();
     while(Serial.available() && (millis() - clearStart) < 200) {  // Max 200ms for clearing
         Serial.read();
         delay(1);
     }
+#endif
 
 #ifndef ROUTER_UI
     Serial.setDebugOutput(true);
@@ -484,11 +486,6 @@ void setup()
     __attribute__((unused)) auto disp = lv_disp_get_default();
 
 #ifdef ROUTER_UI
-#ifdef RDCP_TRANSPORT_UART2
-    Serial.setDebugOutput(false);
-    Serial.flush();
-    Serial.end();
-#endif
     rdcp_transport_begin();
     router_app_init();
 #else
