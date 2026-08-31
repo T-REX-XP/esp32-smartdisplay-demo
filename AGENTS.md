@@ -34,7 +34,7 @@ After upload: **unplug USB-C**, then start `mcudd` on the router. If `ttyS2` RX 
 Working path. **Do not add a gesture opcode or echo `cmd screen` on swipe.**
 
 1. Firmware swipe → local `apply_page` + `evt screen` (the id shown)
-2. Orig C `mcudd` writes `/tmp/mcud_active_screen` from **every** known `evt screen`
+2. Go `mcudd` writes `/tmp/mcud_active_screen` from **every** known `evt screen`
 3. LuCI **Services → MCU Display** polls that sidecar
 
 LuCI prev/next is the same wire: host `cmd screen` → MCU `apply_page` → `evt screen`.
@@ -49,7 +49,7 @@ LuCI prev/next is the same wire: host `cmd screen` → MCU `apply_page` → `evt
 
 | Repo | Role |
 |------|------|
-| `openwrt-packages` | Orig C `mcudd-old`, `luci-app-mcu-display` |
+| `openwrt-packages` | Go `mcudd`, `luci-app-mcu-display` |
 | `immortalwrt` | CM5 image; `ttyS2` free of runtime console |
 
 ## Project skills
