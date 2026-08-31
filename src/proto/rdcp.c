@@ -207,17 +207,6 @@ int rdcp_build_version_evt(char *buf, size_t n, const char *stack, unsigned rele
 			stack, release, component, rdcp) < (int)n ? 0 : -1;
 }
 
-int rdcp_build_input_evt(char *buf, size_t n, const char *dir)
-{
-	if (!buf || n == 0)
-		return -1;
-	if (!dir || !dir[0])
-		dir = "left";
-	return snprintf(buf, n,
-			"{\"v\":1,\"t\":\"evt\",\"op\":\"input\",\"data\":{\"type\":\"gesture\",\"dir\":\"%s\"}}",
-			dir) < (int)n ? 0 : -1;
-}
-
 int rdcp_build_metrics_req(char *buf, size_t n, unsigned id, const char *scope)
 {
 	if (!buf || n == 0 || !scope || !scope[0] || id == 0)

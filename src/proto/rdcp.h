@@ -51,7 +51,6 @@ int rdcp_build_echo(char *buf, size_t n, const char *text);
 int rdcp_build_screen_evt(char *buf, size_t n, const char *screen);
 int rdcp_build_version_evt(char *buf, size_t n, const char *stack, unsigned release,
 			   const char *component, unsigned rdcp);
-int rdcp_build_input_evt(char *buf, size_t n, const char *dir);
 int rdcp_build_metrics_req(char *buf, size_t n, unsigned id, const char *scope);
 int rdcp_build_poweroff(char *buf, size_t n);
 

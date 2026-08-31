@@ -84,7 +84,7 @@ Swipe left/right (or host `cmd` frames) cycles pages. IDs must match `/etc/mcud/
 | `router_wifi` | `wifi` | SSID, AP state, join QR |
 | `router_security` | `security` | Firewall, blocked, VPN |
 
-On boot the MCU emits `evt` `screen` (`router_boot`) and `evt` `version`. Until the host sends a frame, swipe navigates locally. After the first valid host line (`hello`, `res`, `cmd`, …) the MCU is **host-linked**: swipe sends `evt` `input` and waits for `mcudd` to reply with `cmd` `screen` / `nav`. Linked pages poll `req` `metrics` every 1.5 s (system) or 2 s (others).
+On boot the MCU emits `evt` `screen` (`router_boot`) and `evt` `version`. Until the host sends a frame, swipe navigates locally. After the first valid host line (`hello`, `res`, `cmd`, …) the MCU is **host-linked**: swipe still applies locally and broadcasts `evt` `screen`; linked pages poll `req` `metrics` every 1.5 s (system) or 2 s (others). The host never infers the page from a gesture — `evt` `screen` is the only page-sync signal.
 
 ## Protocol (RDCP v1)
 
@@ -97,7 +97,6 @@ Details: [docs/rdcp-v1.md](docs/rdcp-v1.md). Host design: `openwrt-packages/docs
 ```json
 {"v":1,"t":"req","id":1,"op":"metrics","scope":"system"}
 {"v":1,"t":"evt","op":"screen","data":{"screen":"router_system","action":"loaded"}}
-{"v":1,"t":"evt","op":"input","data":{"type":"gesture","dir":"left"}}
 {"v":1,"t":"evt","op":"version","data":{"stack":"1.0.0","release":31,"component":"esp32-router","rdcp":1}}
 ```
 

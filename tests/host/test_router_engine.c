@@ -120,8 +120,9 @@ int main(void)
 	tx_n = 0;
 	expect(router_engine_on_input(&e, "left") == 0, "standalone swipe");
 	expect(shown_page == 0, "local nav to system");
-	expect(tx_has("\"op\":\"input\""), "gesture evt for host/LuCI");
+	expect(!tx_has("\"op\":\"input\""), "no gesture evt");
 	expect(tx_has("\"op\":\"screen\""), "local screen evt");
+	expect(tx_has("router_system"), "swipe broadcasts new id");
 
 	tx_n = 0;
 	expect(router_engine_on_input(&e, "right") == 0, "standalone right");
@@ -139,7 +140,7 @@ int main(void)
 	tx_n = 0;
 	expect(router_engine_on_input(&e, NULL) == 0, "linked swipe");
 	expect(shown_page == 0, "linked local nav");
-	expect(tx_has("\"op\":\"input\""), "gesture evt before local apply");
+	expect(!tx_has("\"op\":\"input\""), "no gesture evt when linked");
 	expect(tx_has("\"op\":\"screen\""), "linked screen evt");
 
 	tx_n = 0;

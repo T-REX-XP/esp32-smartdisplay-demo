@@ -127,17 +127,15 @@ class TestSimulatorProtocol(unittest.TestCase):
         self.assertEqual(frames[0]["id"], 7)
         self.assertEqual(frames[0]["data"]["wifi_enc"], "WPA2")
 
-    def test_gesture_sends_cmd_screen(self):
+    def test_screen_evt_adopts_without_cmd(self):
         ser = FakeSerial()
         self.sim_json.serial_conn = ser
         self.sim_json.active_screen = "router_system"
         self.sim_json.process_command(
-            '{"v":1,"t":"evt","op":"input","data":{"type":"gesture","dir":"left"}}'
+            '{"v":1,"t":"evt","op":"screen","data":{"screen":"router_network","action":"loaded"}}'
         )
-        frames = [json.loads(x.decode("utf-8")) for x in ser.lines()]
-        self.assertEqual(frames[0]["t"], "cmd")
-        self.assertEqual(frames[0]["op"], "screen")
-        self.assertEqual(frames[0]["data"]["screen"], "router_network")
+        self.assertEqual(self.sim_json.active_screen, "router_network")
+        self.assertEqual(ser.lines(), [])
 
     def test_hello_and_ping_frames(self):
         ser = FakeSerial()

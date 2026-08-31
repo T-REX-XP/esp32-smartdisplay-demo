@@ -14,7 +14,7 @@ Every RDCP frame has `"v":1` and `"t"`. Max line length: 4096 bytes.
 | `req` | Host → MCU | `op=version` — MCU replies with `evt` `version` |
 | `res` | Host → MCU | Metrics payload in `data` (same `id` as `req`) |
 | `push` | Host → MCU | Unsolicited: `hello`, `boot`, `alert` |
-| `evt` | MCU → host | `screen` loaded, `input` gesture, `version` |
+| `evt` | MCU → host | `screen` loaded, `version` |
 | `cmd` | Host → MCU | `screen` (goto id) or `nav` (`next` / `prev` / `left` / `right`) |
 
 Legacy lines without `"t"` (flat metric objects) are still applied as metrics.
@@ -24,7 +24,6 @@ Legacy lines without `"t"` (flat metric objects) are still applied as metrics.
 ```json
 {"v":1,"t":"req","id":1,"op":"metrics","scope":"system"}
 {"v":1,"t":"evt","op":"screen","data":{"screen":"router_system","action":"loaded"}}
-{"v":1,"t":"evt","op":"input","data":{"type":"gesture","dir":"left"}}
 {"v":1,"t":"evt","op":"version","data":{"stack":"1.0.0","release":31,"component":"esp32-router","rdcp":1}}
 ```
 
@@ -50,8 +49,8 @@ Screen IDs: `router_boot`, `router_system`, `router_network`, `router_clients`, 
 ## Host-link behaviour (firmware)
 
 1. Boot: show `router_boot`, emit `evt` `screen` + `evt` `version`.
-2. Swipe always changes the page locally and emits `evt` `input` (LuCI sidecar) then `evt` `screen`.
-3. **Linked** (first valid host JSON): pages also poll `req` `metrics`. Host may send `cmd` `screen`; applying the same id is a no-op.
+2. Swipe always changes the page locally and emits **only** `evt` `screen` with the id shown (same frame as a host `cmd` `screen` ack). There is no gesture/`evt input` opcode.
+3. **Linked** (first valid host JSON): pages also poll `req` `metrics`. Host may send `cmd` `screen`; applying the same id is a no-op. Host adopts every known `evt` `screen` into `/tmp/mcud_active_screen`.
 
 ## Transport
 

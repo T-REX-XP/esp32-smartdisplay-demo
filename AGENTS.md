@@ -31,19 +31,19 @@ After upload: **unplug USB-C**, then start `mcudd` on the router. If `ttyS2` RX 
 
 ## Frozen: swipe → LuCI active page
 
-Working path. **Do not change it.**
+Working path. **Do not add a gesture opcode or echo `cmd screen` on swipe.**
 
-1. Firmware swipe → `evt input` then local `apply_page` + `evt screen`
-2. Orig C `mcudd` writes `/tmp/mcud_active_screen` (no `cmd screen` echo on gesture)
+1. Firmware swipe → local `apply_page` + `evt screen` (the id shown)
+2. Orig C `mcudd` writes `/tmp/mcud_active_screen` from **every** known `evt screen`
 3. LuCI **Services → MCU Display** polls that sidecar
 
-Rule: `.cursor/rules/swipe-luci-page-freeze.mdc`. Host skill: `mcu-display-cm5` in `openwrt-packages`.
+LuCI prev/next is the same wire: host `cmd screen` → MCU `apply_page` → `evt screen`.
 
 ## Do not
 
 - Flash while `mcudd` holds `/dev/ttyS2`
 - Leave USB-C plugged after flash
-- Edit swipe / `handle_gesture` / LuCI sidecar logic
+- Edit swipe to wait for host `cmd screen`, or emit `evt input`
 
 ## Related
 

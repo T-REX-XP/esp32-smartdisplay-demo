@@ -55,7 +55,8 @@ int main(void)
 	expect(strcmp(m.text, "a\"b") == 0, "unescaped text");
 
 	expect(rdcp_parse("{\"v\":1,\"t\":\"push\",\"op\":\"hello\"}", &m) == 0, "hello");
-	expect(rdcp_parse("{\"v\":1,\"t\":\"evt\",\"op\":\"input\",\"data\":{\"type\":\"gesture\",\"dir\":\"right\"}}", &m) == 0, "input");
+	expect(rdcp_parse("{\"v\":1,\"t\":\"evt\",\"op\":\"screen\",\"data\":{\"screen\":\"router_wifi\",\"action\":\"loaded\"}}", &m) == 0, "screen evt");
+	expect(strcmp(m.screen, "router_wifi") == 0, "screen id");
 
 	expect(rdcp_build_pong(NULL, 10, 1, 1) != 0, "pong null");
 	expect(rdcp_build_pong(tiny, 8, 1, 1) != 0, "pong tiny");
@@ -83,12 +84,6 @@ int main(void)
 	expect(rdcp_build_version_evt(buf, sizeof(buf), NULL, 1, "c", 1) != 0, "ver stack");
 	expect(rdcp_build_version_evt(buf, sizeof(buf), "1.0.0", 47, "esp32-router", 1) == 0, "ver ok");
 	expect(rdcp_build_version_evt(tiny, 8, "1.0.0", 47, "esp32-router", 1) != 0, "ver tiny");
-
-	expect(rdcp_build_input_evt(NULL, 10, "left") != 0, "input null");
-	expect(rdcp_build_input_evt(buf, sizeof(buf), NULL) == 0, "input default dir");
-	expect(strstr(buf, "left") != NULL, "default left");
-	expect(rdcp_build_input_evt(buf, sizeof(buf), "right") == 0, "input right");
-	expect(rdcp_build_input_evt(tiny, 8, "left") != 0, "input tiny");
 
 	expect(rdcp_build_metrics_req(buf, sizeof(buf), 0, "system") != 0, "metrics id0");
 	expect(rdcp_build_metrics_req(buf, sizeof(buf), 1, "") != 0, "metrics scope");

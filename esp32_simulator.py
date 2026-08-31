@@ -504,22 +504,6 @@ class ESP32Simulator:
     def scope_for_screen(self, screen_id):
         return SCOPE_FOR_SCREEN.get(screen_id, "system")
 
-    def page_neighbor(self, screen_id, direction):
-        if screen_id == "router_boot":
-            return ROUTER_PAGES[0]
-        try:
-            idx = ROUTER_PAGES.index(screen_id)
-        except ValueError:
-            return ROUTER_PAGES[0]
-        if direction in ("left", "next"):
-            return ROUTER_PAGES[(idx + 1) % len(ROUTER_PAGES)]
-        return ROUTER_PAGES[(idx - 1) % len(ROUTER_PAGES)]
-
-    def handle_gesture(self, direction):
-        nxt = self.page_neighbor(self.active_screen, direction)
-        self.log(f"👆 Gesture {direction}: {self.active_screen} -> {nxt}")
-        self.send_cmd_screen(nxt, direction)
-
     def handle_rdcp_request(self, command):
         req_id = command.get("id", 0)
         op = command.get("op")
@@ -550,9 +534,6 @@ class ESP32Simulator:
             self.log(f"📱 MCU screen event: {screen}")
             if screen == "router_boot":
                 self.send_boot_push("boot", "Host connected — booting…", 35)
-            return
-        if op == "input" and data.get("type") == "gesture":
-            self.handle_gesture(data.get("dir", "left"))
             return
         if op == "version":
             self.fw_version = data
@@ -641,7 +622,7 @@ class ESP32Simulator:
     def listen_loop(self):
         self.log("👂 Listening for ESP32 RDCP (JSON lines)…")
         self.log(f"   Host version {self.version['stack']}+{self.version['release']} rdcp={self.version['rdcp']}")
-        self.log("   MCU req metrics / evt screen|input|version — host replies with res/cmd/push")
+        self.log("   MCU req metrics / evt screen|version — host replies with res/cmd/push")
         buffer = ""
         while self.running:
             try:

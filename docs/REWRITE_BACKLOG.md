@@ -22,7 +22,7 @@ Shared IDs with `openwrt-packages/feeds/packages/mcudd/docs/backlog.md`.
 | ID | Task | Status |
 |----|------|--------|
 | R2-1 | `src/proto` host-testable C parse/build | [x] |
-| R2-2 | `src/app` linked `evt input` policy | [x] |
+| R2-2 | `src/app` swipe emits `evt screen` only (no `evt input`) | [x] |
 | R2-3 | Host gcc tests 100% of proto+app | [x] |
 | R2-4 | Rebind LVGL / UART2 / BOOT | [x] |
 | R2-5 | Remove txbeacon env | [x] |
