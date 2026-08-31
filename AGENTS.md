@@ -42,7 +42,6 @@ Rule: `.cursor/rules/swipe-luci-page-freeze.mdc`. Host skill: `mcu-display-cm5` 
 - Flash while `mcudd` holds `/dev/ttyS2`
 - Leave USB-C plugged after flash
 - Edit swipe / `handle_gesture` / LuCI sidecar logic
-- Use `scp` to the CM5 (`sftp-server` is missing — pipe with `ssh … 'cat > file'`)
 
 ## Related
 

@@ -236,22 +236,12 @@ void router_app_on_serial_line(const char *line)
 void router_app_loop(void)
 {
 	bool ok;
-	static unsigned long last_uart_rebegin;
 
 	router_engine_tick(&g_eng);
 	ok = router_engine_link_ok(&g_eng, ROUTER_LINK_TIMEOUT_MS);
-	if (!ok) {
-		unsigned long now = millis();
-
-		if (last_uart_rebegin == 0)
-			last_uart_rebegin = now;
-		else if (now - last_uart_rebegin > 5000UL) {
-			rdcp_transport_begin();
-			last_uart_rebegin = now;
-		}
-	} else {
-		last_uart_rebegin = millis();
-	}
+	/* Do not Serial2.end()/begin() while unlinked — that flushes GPIO3 RX
+	 * and drops host cmd screen / ping (LuCI prev/next). One-shot begin
+	 * in setup() is enough; swipe TX still works without a re-init. */
 	if (g_metrics.link_ok != ok) {
 		g_metrics.link_ok = ok;
 		if (g_ui && !router_ui_on_boot(g_ui) && !router_ui_poweroff_active(g_ui))
