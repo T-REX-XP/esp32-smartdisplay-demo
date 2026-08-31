@@ -234,19 +234,22 @@ int router_engine_on_line(router_engine_t *e, const char *line)
 
 int router_engine_on_input(router_engine_t *e, const char *dir)
 {
-	char buf[128];
+	char buf[160];
 
 	if (!e)
 		return -1;
 	if (!dir || !dir[0])
 		dir = "left";
 	snprintf(e->last_gesture_dir, sizeof(e->last_gesture_dir), "%s", dir);
-	if (e->linked) {
-		if (rdcp_build_input_evt(buf, sizeof(buf), dir) == 0)
-			tx(e, buf);
-		return 0;
-	}
+	/* Notify the host before the local page change so mcudd can write
+	 * /tmp/mcud_active_screen (LuCI) even when cmd screen is rate-limited.
+	 * Then apply locally — waiting for host cmd bricks swipe when CM5 TX
+	 * never reaches GPIO3 (USB/CH340 share). apply_page emits evt screen. */
+	if (rdcp_build_input_evt(buf, sizeof(buf), dir) == 0)
+		tx(e, buf);
 	apply_page(e, neighbor(e->page, dir));
+	if (e->linked)
+		request_metrics(e);
 	return 0;
 }
 

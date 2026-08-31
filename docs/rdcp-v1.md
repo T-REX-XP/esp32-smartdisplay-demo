@@ -50,8 +50,8 @@ Screen IDs: `router_boot`, `router_system`, `router_network`, `router_clients`, 
 ## Host-link behaviour (firmware)
 
 1. Boot: show `router_boot`, emit `evt` `screen` + `evt` `version`.
-2. **Standalone** (no host frame yet): swipe changes page locally.
-3. **Linked** (first valid host JSON): swipe emits `evt` `input` and waits for `cmd`; pages poll `req` `metrics`.
+2. Swipe always changes the page locally and emits `evt` `input` (LuCI sidecar) then `evt` `screen`.
+3. **Linked** (first valid host JSON): pages also poll `req` `metrics`. Host may send `cmd` `screen`; applying the same id is a no-op.
 
 ## Transport
 

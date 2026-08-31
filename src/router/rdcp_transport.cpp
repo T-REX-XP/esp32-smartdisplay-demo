@@ -28,30 +28,33 @@
 #define RDCP_LINE_MAX 4096
 #endif
 
-static HardwareSerial RdcpSerial(2);
 static char g_line_buf[RDCP_LINE_MAX];
 static size_t g_line_len;
 
 static Stream &rdcp_stream(void)
 {
-	return RdcpSerial;
+	/* UART2 remapped onto P1 JST (GPIO3 RX / GPIO1 TX). UART0 stays
+	 * released after Serial.end() so USB-CH340 cannot hold GPIO1 TX
+	 * and starve ttyS2 of swipe/screen events. */
+	return Serial2;
 }
 
 void rdcp_transport_begin(void)
 {
-	/*
-	 * Buffer sizes must be set BEFORE begin() or ESP32 Arduino ignores them
-	 * (default RX stays 256 B and host startup floods drop screen/nav cmds).
-	 */
-	RdcpSerial.setRxBufferSize(RDCP_RX_BUFFER_SIZE);
-	RdcpSerial.setTxBufferSize(RDCP_TX_BUFFER_SIZE);
-	RdcpSerial.begin(RDCP_UART_BAUD, SERIAL_8N1, RDCP_UART_RX, RDCP_UART_TX);
-	RdcpSerial.setTimeout(20);
+	Serial.setDebugOutput(false);
+	Serial.flush();
+	Serial.end();
+	delay(20);
+	Serial2.setRxBufferSize(RDCP_RX_BUFFER_SIZE);
+	Serial2.setTxBufferSize(RDCP_TX_BUFFER_SIZE);
+	Serial2.begin(RDCP_UART_BAUD, SERIAL_8N1, RDCP_UART_RX, RDCP_UART_TX);
+	Serial2.setTimeout(20);
 	g_line_len = 0;
+	delay(50);
 
 	unsigned long clearStart = millis();
-	while (RdcpSerial.available() && (millis() - clearStart) < 200) {
-		RdcpSerial.read();
+	while (Serial2.available() && (millis() - clearStart) < 200) {
+		Serial2.read();
 		delay(1);
 	}
 }
@@ -110,4 +113,10 @@ void rdcp_transport_send_line(const char *line)
 	if (!line)
 		return;
 	rdcp_stream().println(line);
+	rdcp_stream().flush();
+}
+
+void rdcp_transport_flush(void)
+{
+	rdcp_stream().flush();
 }

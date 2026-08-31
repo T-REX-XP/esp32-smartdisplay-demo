@@ -444,9 +444,11 @@ void setup()
     delay(100);
 #endif
 
+#ifndef ROUTER_UI
     Serial.begin(115200);
     Serial.setTimeout(1000);
     Serial.setDebugOutput(false);
+#endif
 
     // Keep GPIO0 HIGH throughout initialization
 #ifndef ROUTER_UI
@@ -483,10 +485,6 @@ void setup()
 
 #ifdef ROUTER_UI
 #ifdef RDCP_TRANSPORT_UART2
-    /*
-     * GPIO1/3 are shared with USB-UART0. Release UART0 before remapping UART2
-     * onto the same pins for the CM5 JST link. Never print debug on this UART.
-     */
     Serial.setDebugOutput(false);
     Serial.flush();
     Serial.end();
