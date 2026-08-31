@@ -100,6 +100,7 @@ int main(void)
 	expect(router_engine_emit_poweroff(NULL) != 0, "null pwr");
 	expect(router_engine_tick(NULL) == 0, "null tick");
 	expect(router_engine_page_from_id(NULL) == ROUTER_ENGINE_BOOT, "null id");
+	expect(router_engine_page_from_id("router_boot") == ROUTER_ENGINE_BOOT, "boot from id");
 	expect(router_engine_is_boot_id("router_boot"), "boot id");
 	expect(!router_engine_is_boot_id(NULL), "null boot");
 	expect(strcmp(router_engine_page_id(-1), "router_boot") == 0, "id boot");
@@ -113,9 +114,27 @@ int main(void)
 	shown_boot = 0;
 	router_engine_init(&e, &h);
 	expect(shown_boot == 1, "init boot");
+	expect(shown_page == ROUTER_ENGINE_BOOT, "init page boot");
 	expect(tx_has("router_boot"), "init screen evt");
 	expect(tx_has("\"op\":\"version\""), "init version");
 	expect(!e.linked, "standalone");
+
+	{
+		router_engine_t from_boot;
+		const char *hello =
+			"{\"v\":1,\"t\":\"push\",\"op\":\"hello\",\"data\":{\"stack\":\"1.0.0\",\"release\":47,\"component\":\"mcudd\",\"rdcp\":1}}";
+
+		tx_n = 0;
+		shown_boot = 0;
+		shown_page = -99;
+		router_engine_init(&from_boot, &h);
+		tx_n = 0;
+		expect(router_engine_on_line(&from_boot, hello) == 0, "hello from boot");
+		expect(from_boot.linked, "linked from boot hello");
+		expect(shown_page == 0, "hello leaves boot");
+		expect(tx_has("router_system"), "leave-boot screen evt");
+		expect(tx_has("\"op\":\"version\""), "hello version from boot");
+	}
 
 	tx_n = 0;
 	expect(router_engine_on_input(&e, "left") == 0, "standalone swipe");
@@ -157,21 +176,26 @@ int main(void)
 	expect(tx_has("mcud-link-test"), "echo text");
 
 	tx_n = 0;
-	expect(router_engine_on_line(&e, "{\"v\":1,\"t\":\"cmd\",\"op\":\"screen\",\"data\":{\"screen\":\"router_network\",\"dir\":\"left\"}}") == 0, "cmd screen");
-	expect(shown_page == 1, "network page");
-	expect(tx_has("router_network"), "screen ack");
+	expect(router_engine_on_input(&e, "left") == 0, "mcu swipe network");
+	expect(shown_page == 1, "network via mcu swipe");
+	expect(tx_has("router_network"), "swipe screen evt");
 	expect(tx_has("\"op\":\"metrics\""), "metrics poll");
 
 	tx_n = 0;
-	expect(router_engine_on_line(&e, "{\"v\":1,\"t\":\"cmd\",\"op\":\"nav\",\"data\":{\"dir\":\"prev\"}}") == 0, "nav prev");
-	expect(shown_page == 0, "nav to system");
-
-	expect(router_engine_on_line(&e, "{\"v\":1,\"t\":\"cmd\",\"op\":\"nav\",\"data\":{\"dir\":\"next\"}}") == 0, "nav next");
+	expect(router_engine_on_line(&e, "{\"v\":1,\"t\":\"cmd\",\"op\":\"screen\",\"data\":{\"screen\":\"router_wifi\",\"dir\":\"left\"}}") == 0, "cmd screen ignored");
+	expect(shown_page == 1, "host cmd screen ignored");
+	expect(!tx_has("router_wifi"), "no host screen ack");
 
 	tx_n = 0;
-	expect(router_engine_on_line(&e, "{\"v\":1,\"t\":\"cmd\",\"op\":\"screen\",\"data\":{\"screen\":\"router_boot\"}}") == 0, "cmd boot screen");
+	expect(router_engine_on_line(&e, "{\"v\":1,\"t\":\"cmd\",\"op\":\"nav\",\"data\":{\"dir\":\"prev\"}}") == 0, "nav prev ignored");
+	expect(shown_page == 1, "host nav ignored");
+
+	expect(router_engine_on_line(&e, "{\"v\":1,\"t\":\"cmd\",\"op\":\"nav\",\"data\":{\"dir\":\"next\"}}") == 0, "nav next ignored");
+
+	tx_n = 0;
+	expect(router_engine_on_line(&e, "{\"v\":1,\"t\":\"cmd\",\"op\":\"screen\",\"data\":{\"screen\":\"router_boot\"}}") == 0, "cmd boot screen ignored");
 	expect(router_engine_on_line(&e, "{\"v\":1,\"t\":\"push\",\"op\":\"boot\",\"data\":{\"text\":\"Network\",\"pct\":60,\"screen\":\"router_boot\"}}") == 0, "push boot");
-	expect(shown_page == ROUTER_ENGINE_BOOT, "back to boot");
+	expect(shown_page == 1, "push boot does not steal page");
 	expect(boot_pct == 60, "boot pct");
 
 	expect(router_engine_on_line(&e, "{\"v\":1,\"t\":\"push\",\"op\":\"boot\",\"data\":{\"pct\":1}}") == 0, "boot default text");
@@ -181,7 +205,7 @@ int main(void)
 
 	expect(router_engine_on_line(&e, "{\"v\":1,\"t\":\"push\",\"op\":\"alert\",\"data\":{\"text\":\"WAN down\",\"screen\":\"router_system\"}}") == 0, "alert");
 	expect(strcmp(boot_text, "WAN down") == 0, "alert text");
-	expect(shown_page == 0, "alert screen");
+	expect(shown_page == 1, "alert does not steal page");
 
 	expect(router_engine_on_line(&e, "{\"v\":1,\"t\":\"push\",\"op\":\"other\"}") == 0, "unknown push");
 	expect(router_engine_on_line(&e, "{\"v\":1,\"t\":\"cmd\",\"op\":\"other\"}") == 0, "unknown cmd");

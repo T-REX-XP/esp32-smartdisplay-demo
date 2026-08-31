@@ -21,6 +21,8 @@ static const char *const PAGE_SCOPES[ROUTER_ENGINE_PAGE_COUNT] = {
 	"system", "network", "clients", "storage", "wifi", "security",
 };
 
+static void apply_page(router_engine_t *e, int page);
+
 static unsigned now_ms(router_engine_t *e)
 {
 	if (e && e->hooks.now_ms)
@@ -36,8 +38,13 @@ static void tx(router_engine_t *e, const char *line)
 
 static void mark_linked(router_engine_t *e)
 {
+	bool was = e->linked;
+
 	e->linked = true;
 	e->last_rx_ms = now_ms(e);
+	/* Host no longer sends cmd screen. Leave the splash once the link is up. */
+	if (!was && e->page == ROUTER_ENGINE_BOOT)
+		apply_page(e, 0);
 }
 
 static void emit_version(router_engine_t *e)
@@ -137,12 +144,9 @@ void router_engine_init(router_engine_t *e, const router_hooks_t *hooks)
 	if (!e)
 		return;
 	memset(e, 0, sizeof(*e));
-	e->page = ROUTER_ENGINE_BOOT;
 	if (hooks)
 		e->hooks = *hooks;
-	if (e->hooks.show_boot)
-		e->hooks.show_boot(e->hooks.ctx);
-	emit_screen(e, "router_boot");
+	apply_page(e, ROUTER_ENGINE_BOOT);
 	emit_version(e);
 }
 
@@ -184,8 +188,6 @@ int router_engine_on_line(router_engine_t *e, const char *line)
 			if (e->hooks.set_boot_status)
 				e->hooks.set_boot_status(msg.text[0] ? msg.text : "Booting...",
 							 msg.pct, e->hooks.ctx);
-			if (msg.screen[0])
-				apply_page(e, router_engine_page_from_id(msg.screen));
 			return 0;
 		}
 		if (!strcmp(msg.op, "config")) {
@@ -197,25 +199,14 @@ int router_engine_on_line(router_engine_t *e, const char *line)
 		if (!strcmp(msg.op, "alert")) {
 			if (e->hooks.set_boot_status && msg.text[0])
 				e->hooks.set_boot_status(msg.text, 100, e->hooks.ctx);
-			if (msg.screen[0])
-				apply_page(e, router_engine_page_from_id(msg.screen));
 			return 0;
 		}
 		return 0;
 	case RDCP_KIND_CMD:
 		mark_linked(e);
-		if (!strcmp(msg.op, "screen") && msg.screen[0]) {
-			if (msg.dir[0])
-				snprintf(e->last_gesture_dir, sizeof(e->last_gesture_dir), "%s", msg.dir);
-			apply_page(e, router_engine_page_from_id(msg.screen));
-			request_metrics(e);
+		/* MCU owns the page ring. Host cmd screen/nav is ignored. */
+		if (!strcmp(msg.op, "screen") || !strcmp(msg.op, "nav"))
 			return 0;
-		}
-		if (!strcmp(msg.op, "nav")) {
-			apply_page(e, neighbor(e->page, msg.dir[0] ? msg.dir : "next"));
-			request_metrics(e);
-			return 0;
-		}
 		if (!strcmp(msg.op, "echo")) {
 			if (rdcp_build_echo(buf, sizeof(buf), msg.text) == 0)
 				tx(e, buf);
@@ -239,10 +230,7 @@ int router_engine_on_input(router_engine_t *e, const char *dir)
 	if (!dir || !dir[0])
 		dir = "left";
 	snprintf(e->last_gesture_dir, sizeof(e->last_gesture_dir), "%s", dir);
-	/* Local apply first — waiting for host cmd bricks swipe when CM5 TX
-	 * never reaches GPIO3 (USB/CH340 share). apply_page emits evt screen
-	 * with the id the MCU actually showed; that is the only page-sync
-	 * signal (same frame as a LuCI cmd screen ack). */
+	/* Local apply + evt screen. Host does not command pages. */
 	apply_page(e, neighbor(e->page, dir));
 	if (e->linked)
 		request_metrics(e);
@@ -268,8 +256,10 @@ int router_engine_tick(router_engine_t *e)
 		}
 		return 0;
 	}
-	if (e->page < 0)
+	if (e->page < 0) {
+		request_metrics(e);
 		return 0;
+	}
 	interval = (e->page == 0) ? 1500u : 2000u;
 	if (now - e->last_req_ms > interval)
 		request_metrics(e);
