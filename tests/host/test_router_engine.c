@@ -225,7 +225,12 @@ int main(void)
 
 	e.linked = false;
 	e.page = 0;
+	e.last_req_ms = 0;
+	fake_now = 1;
+	tx_n = 0;
 	expect(router_engine_tick(&e) == 0, "tick unlinked");
+	expect(tx_has("\"op\":\"version\""), "unlinked announce version");
+	expect(tx_has("router_system"), "unlinked announce screen");
 	e.linked = true;
 	e.page = ROUTER_ENGINE_BOOT;
 	expect(router_engine_tick(&e) == 0, "tick boot");

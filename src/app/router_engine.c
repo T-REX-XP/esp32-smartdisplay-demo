@@ -258,9 +258,22 @@ int router_engine_tick(router_engine_t *e)
 	unsigned now;
 	unsigned interval;
 
-	if (!e || !e->linked || e->page < 0)
+	if (!e)
 		return 0;
 	now = now_ms(e);
+	/* Keep announcing until the host is known-reachable. Init events are
+	 * easy to miss (USB flash / mcudd restart); without this LuCI stays
+	 * on router_boot and swipe evt never has a listener. */
+	if (!e->linked) {
+		if (e->last_req_ms == 0 || now - e->last_req_ms > 2000u) {
+			emit_version(e);
+			emit_screen(e, router_engine_page_id(e->page));
+			e->last_req_ms = now ? now : 1;
+		}
+		return 0;
+	}
+	if (e->page < 0)
+		return 0;
 	interval = (e->page == 0) ? 1500u : 2000u;
 	if (now - e->last_req_ms > interval)
 		request_metrics(e);

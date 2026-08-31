@@ -45,6 +45,8 @@ void rdcp_transport_begin(void)
 	Serial.flush();
 	Serial.end();
 	delay(20);
+	Serial2.end();
+	delay(20);
 	Serial2.setRxBufferSize(RDCP_RX_BUFFER_SIZE);
 	Serial2.setTxBufferSize(RDCP_TX_BUFFER_SIZE);
 	Serial2.begin(RDCP_UART_BAUD, SERIAL_8N1, RDCP_UART_RX, RDCP_UART_TX);
